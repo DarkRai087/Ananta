@@ -1,0 +1,31 @@
+{
+  "name": "nse-chart-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local NSE data server: Yahoo Finance + SQLite cache",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch --watch-preserve-output index.js",
+    "fetch-all": "node scripts/fetch-all.js",
+    "backfill": "node scripts/backfill.js",
+    "test": "vitest run",
+    "vwap-research": "node scripts/strategyResearch.js --strategy=vwapBands",
+    "strategy-research": "node scripts/strategyResearch.js",
+    "orb-research": "node scripts/strategyResearch.js --strategy=orb"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "otplib": "^13.5.0",
+    "yahoo-finance2": "^4.0.5"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.5"
+  }
+}

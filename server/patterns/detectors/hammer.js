@@ -1,0 +1,19 @@
+// Hammer: small body near the top, long lower wick, after a decline.
+import { PATTERNS as CFG } from "../../config/patterns.js";
+import { body, range, upperWick, lowerWick, hasRange, trendOk, hit } from "../candle.js";
+
+export const id = "hammer";
+export const names = ["Hammer"];
+
+export function detect(cs, i) {
+  const c = cs[i];
+  if (!c || !hasRange(c)) return null;
+  const r = range(c);
+  const b = body(c);
+  const k = CFG.hammer;
+  if (b / r > k.maxBodyPct) return null;
+  if (lowerWick(c) < k.minLowerWickToBody * Math.max(b, r * 0.02)) return null;
+  if (upperWick(c) / r > k.maxUpperWickPct) return null;
+  if (!trendOk(cs, i, -1)) return null;
+  return hit("Hammer", "long", i);
+}

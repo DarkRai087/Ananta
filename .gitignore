@@ -1,0 +1,8 @@
+node_modules/
+client/dist/
+server/cache.db
+server/cache.db-wal
+server/cache.db-shm
+server/.env
+.env
+*.log
