@@ -10,10 +10,13 @@
 // data scores 0). Lower minScore in the Lab to study how the score relates to results.
 import { defineStrategy } from "./common.js";
 import { watch, armed, waiting, off, tf, px } from "./planKit.js";
-import { evaluate, triggersNow, VWAP_REVERSION } from "../vwapReversion/index.js";
+import { evaluate, triggersNow, configFor, VWAP_REVERSION } from "../vwapReversion/index.js";
+import { buildReport as buildVwapReport } from "../vwapReversion/report.js";
 
 export default defineStrategy({
   id: "vwapBands",
+  levels: ["vwapUpper", "vwap", "vwapLower"],
+  decision: { evaluate, configFor, build: buildVwapReport, vix: false, report: "vwap" },
   name: "VWAP σ-Band Reversion",
   description:
     "Eight-factor VWAP σ-band mean reversion: a ±2σ test, a close back inside, then a close beyond the rejection candle. Trades only when regime, deviation, price action, volume, market, liquidity and risk score ≥ 85/100 and every mandatory session, trend, liquidity and risk check passes. Target VWAP.",

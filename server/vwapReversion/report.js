@@ -1,8 +1,7 @@
 // The decision report (sections A–F of the spec) from one evaluation. Numbers only where the
 // decision allows them: NO TRADE never carries an entry, stop, target or quantity.
-import { num, roundTick } from "../decision/util.js";
+import { num, roundTick, rs } from "../decision/util.js";
 
-const rs = (x) => (num(x) ? `₹${x.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—");
 const f2 = (x, d = 2) => (num(x) ? x.toFixed(d) : "—");
 const dirWord = (d) => (d > 0 ? "Up" : d < 0 ? "Down" : "Mixed");
 

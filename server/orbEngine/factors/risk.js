@@ -7,7 +7,7 @@
 //
 // Hard gates: net R:R ≥ 1.5, a logical stop, at least one share, the day's volatility not already
 // spent, ≤ 3 trades a day, today's loss under 1% of capital.
-import { ptsAtOrAbove, line, factor, gate, num, fmt, rs } from "../../decision/util.js";
+import { ptsAtOrAbove, line, factor, gate, num, fmt, rs, inr } from "../../decision/util.js";
 
 const inRange = (x, [lo, hi]) => x >= lo && x <= hi;
 
@@ -19,7 +19,7 @@ export function riskFactor(D) {
   const tradesToday = extras.tradesToday ?? ctx.tradesToday ?? 0;
   const dayPnl = extras.dayPnlRs ?? 0;
   gates.push(gate("trades", "Trades today within limit", tradesToday < risk.maxTradesPerDay, `${tradesToday} of ${risk.maxTradesPerDay} trades used today`));
-  gates.push(gate("dayLoss", "Daily loss within limit", dayPnl > -risk.maxDailyLossRs, `today's result ₹${Math.round(dayPnl).toLocaleString("en-IN")} (stop at −₹${Math.round(risk.maxDailyLossRs).toLocaleString("en-IN")}, ${R.maxDailyLossPct}% of capital)`));
+  gates.push(gate("dayLoss", "Daily loss within limit", dayPnl > -risk.maxDailyLossRs, `today's result ₹${inr(Math.round(dayPnl))} (stop at −₹${inr(Math.round(risk.maxDailyLossRs))}, ${R.maxDailyLossPct}% of capital)`));
   if (num(D.consumed)) gates.push(gate("consumed", "Daily range not used up", D.consumed < R.maxConsumed, `today's range is ${fmt(D.consumed * 100, 0)}% of the 14-day ATR (limit ${R.maxConsumed * 100}%)`));
 
   if (!levels) {

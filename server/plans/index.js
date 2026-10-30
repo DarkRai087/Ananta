@@ -11,6 +11,7 @@
 // targets work the same as in the backtest. Quantity uses the backtest's sizing: the most
 // shares whose loss at the stop, charges and stop slippage included, is within your risk.
 import { LAB } from "../config/lab.js";
+import { inr } from "../decision/util.js";
 import { STRATEGIES, resolveParams } from "../strategies/index.js";
 import { loadSessions, settingsWithDefaults } from "../backtest/run.js";
 import { runSession, bracket, targetForProfit } from "../backtest/engine.js";
@@ -135,7 +136,7 @@ function planStrategy(def, env) {
     description: def.description,
     entryWindow: `${params.entryStart}–${minToHHMM(Math.min(hhmmToMin(params.entryEnd), hhmmToMin(st.entryCutoff)))}`,
     stopRule: params.stopType === "atr" ? `${params.atrMult}× ATR` : params.stopType === "percent" ? `${params.stopPct}%` : "structure",
-    targetRule: st.profitTarget > 0 ? `your profit target (₹${Math.round(st.profitTarget).toLocaleString("en-IN")} after costs)` : params.targetR > 0 ? `${params.targetR}R` : "strategy target / exit signal / 15:15",
+    targetRule: st.profitTarget > 0 ? `your profit target (₹${inr(Math.round(st.profitTarget))} after costs)` : params.targetR > 0 ? `${params.targetR}R` : "strategy target / exit signal / 15:15",
     status: "off",
     note: "",
     setups: [],

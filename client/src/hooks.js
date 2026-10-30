@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { startToday, waitForJob, labMeta } from "./api.js";
-import { istNow, isMarketOpen } from "./format.js";
+import { istNow, isMarketOpen, isTradingDay, setMarket } from "./format.js";
 
 // Lab metadata (strategies, patterns, overlays, provider…), loaded once.
 let metaPromise = null;
@@ -8,7 +8,7 @@ export function useLabMeta() {
   const [meta, setMeta] = useState(null);
   const [error, setError] = useState(null);
   useEffect(() => {
-    metaPromise ||= labMeta();
+    metaPromise ||= labMeta().then((m) => (setMarket(m.market), m));
     metaPromise.then(setMeta).catch((e) => {
       metaPromise = null;
       setError(e.message);
@@ -80,8 +80,7 @@ export function useToday(target, interval, oosSessions, ranking, account = null)
     const freeze = fh * 60 + fm;
     const id = setInterval(() => {
       const n = istNow();
-      const weekday = n.weekday >= 1 && n.weekday <= 5;
-      if (weekday && n.minute >= 9 * 60 && n.minute <= freeze + 1 && result?.mode !== "frozen") run();
+      if (isTradingDay(n) && n.minute >= 9 * 60 && n.minute <= freeze + 1 && result?.mode !== "frozen") run();
     }, ranking.refreshMinutes * 60_000);
     return () => clearInterval(id);
   }, [run, ranking, result?.mode]);

@@ -3,6 +3,7 @@ import { watch, off, tf, px, refPrice } from "./planKit.js";
 
 export default defineStrategy({
   id: "camarilla",
+  levels: ["h4", "h3", "l3", "l4"],
   name: "Camarilla Pivots",
   description: "Reversal: price tests L3 and closes back above it with a bullish bar → long, stop below L4 (short: mirror at H3/H4). Breakout: close above H4 → long, stop below H3 (short: close below L4).",
   params: { mode: "both", tolerancePct: 0.1, stopBufferPct: 0.05, entryStart: "09:30", entryEnd: "14:30", targetR: 1.5 },

@@ -4,7 +4,7 @@
 import { generate, createGuardrails } from "otplib";
 import db, { getMeta, setMeta } from "../../../db.js";
 import { SMARTAPI } from "../../../config/smartapi.js";
-import { ProviderError, sleep } from "../errors.js";
+import { ProviderError, sleep } from "../../../errors.js";
 import { apiPost } from "./client.js";
 import { istNow } from "../../../lab/time.js";
 

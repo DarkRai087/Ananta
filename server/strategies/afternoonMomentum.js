@@ -4,6 +4,7 @@ import { watch, waiting, off, px } from "./planKit.js";
 
 export default defineStrategy({
   id: "afternoonMomentum",
+  levels: ["vwap", "pdc"],
   name: "Intraday Momentum (late session)",
   description: "If the move from the previous close to the check time (default 09:45) is at least the threshold, and price is still on that side of VWAP in the afternoon, ride it into the 15:15 square-off. Based on research that the first half-hour's return predicts the last half-hour's.",
   params: { checkTime: "09:45", minRetPct: 0.5, swingBars: 6, entryStart: "14:15", entryEnd: "14:45", stopType: "atr", atrMult: 2, targetR: 0 },

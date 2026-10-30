@@ -30,10 +30,17 @@ export function istNow() {
   return { date: d.toISOString().slice(0, 10), minute: d.getUTCHours() * 60 + d.getUTCMinutes(), weekday: d.getUTCDay() };
 }
 
-// NSE cash session (weekdays 09:15–15:30 IST), plus one minute to pick up the final bar.
+// Session hours (IST minutes) and holidays come from the server (/api/lab/meta → setMarket);
+// these defaults only cover the moment before it answers.
+let MKT = { open: 555, close: 930, holidays: new Set() };
+export const setMarket = (m) => m && (MKT = { open: m.open, close: m.close, holidays: new Set(m.holidays) });
+
+export const isTradingDay = (n = istNow()) => n.weekday >= 1 && n.weekday <= 5 && !MKT.holidays.has(n.date);
+
+// NSE cash session, plus one minute to pick up the final bar.
 export function isMarketOpen() {
   const n = istNow();
-  return n.weekday >= 1 && n.weekday <= 5 && n.minute >= 9 * 60 + 15 && n.minute <= 15 * 60 + 31;
+  return isTradingDay(n) && n.minute >= MKT.open && n.minute <= MKT.close + 1;
 }
 
 export const fmtSignedPct = (n, digits = 2) => (n == null || !Number.isFinite(n) ? "—" : `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(digits)}%`);

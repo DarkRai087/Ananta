@@ -1,18 +1,6 @@
 // Universes: NIFTY 50 and NIFTY 100 (constituents from NSE, refreshed weekly) and a custom watchlist.
 import db, { getMeta, setMeta } from "../db.js";
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS universe_members (
-    universe TEXT NOT NULL,
-    symbol   TEXT NOT NULL,
-    name     TEXT,
-    PRIMARY KEY (universe, symbol)
-  );
-  CREATE TABLE IF NOT EXISTS watchlist (
-    symbol   TEXT PRIMARY KEY,
-    added_at INTEGER NOT NULL
-  );
-`);
+import { fetchNseCsv } from "./nse.js";
 
 export const UNIVERSES = {
   NIFTY50: { name: "NIFTY 50", url: "https://nsearchives.nseindia.com/content/indices/ind_nifty50list.csv", index: "NIFTY50" },
@@ -20,16 +8,8 @@ export const UNIVERSES = {
   WATCHLIST: { name: "Watchlist" },
 };
 
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
-
 export async function downloadNseList(url) {
-  const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/csv,*/*" }, signal: AbortSignal.timeout(30_000) });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const lines = (await res.text()).trim().split(/\r?\n/);
-  const header = lines.shift().split(",").map((h) => h.trim().toUpperCase());
-  const iSym = header.indexOf("SYMBOL");
-  const iName = header.indexOf("COMPANY NAME");
-  return lines.map((l) => l.split(",")).filter((f) => f[iSym]).map((f) => ({ symbol: f[iSym].trim(), name: f[iName]?.trim() }));
+  return (await fetchNseCsv(url)).filter((r) => r.SYMBOL).map((r) => ({ symbol: r.SYMBOL, name: r["COMPANY NAME"] }));
 }
 
 export async function ensureUniverses({ force = false } = {}) {

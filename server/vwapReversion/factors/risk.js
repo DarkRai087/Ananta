@@ -5,7 +5,7 @@
 //   size feasibility    2   at least one share inside the risk budget, not capped by position value
 //
 // Hard gates: net R:R ≥ 1.5, quantity ≥ 1, ≤ 3 trades a day, today's loss under 1% of capital.
-import { ptsAtOrAbove, line, factor, gate, num, fmt } from "../../decision/util.js";
+import { ptsAtOrAbove, line, factor, gate, num, fmt, inr } from "../../decision/util.js";
 
 export function riskFactor(D) {
   const { levels, cfg, risk, atr, extras } = D;
@@ -16,7 +16,7 @@ export function riskFactor(D) {
   const dayPnl = extras.dayPnlRs ?? 0;
 
   gates.push(gate("trades", "Trades today within limit", tradesToday < risk.maxTradesPerDay, `${tradesToday} of ${risk.maxTradesPerDay} trades used today`));
-  gates.push(gate("dayLoss", "Daily loss within limit", dayPnl > -risk.maxDailyLossRs, `today's result ₹${Math.round(dayPnl).toLocaleString("en-IN")} (stop at −₹${Math.round(risk.maxDailyLossRs).toLocaleString("en-IN")}, ${R.maxDailyLossPct}% of capital)`));
+  gates.push(gate("dayLoss", "Daily loss within limit", dayPnl > -risk.maxDailyLossRs, `today's result ₹${inr(Math.round(dayPnl))} (stop at −₹${inr(Math.round(risk.maxDailyLossRs))}, ${R.maxDailyLossPct}% of capital)`));
 
   if (!levels) {
     lines.push(line("rr", "Net reward / risk", 0, 6, null, "no trade levels yet", "na"));
@@ -37,7 +37,7 @@ export function riskFactor(D) {
   lines.push(line("stop", "Stop distance", sp, 2, num(dist) ? `${fmt(dist, 2)} ATR (₹${fmt(levels.riskPerShare)} / share)` : null, !num(dist) ? "" : dist < R.stopAtrOk[0] ? "too tight — inside normal noise" : dist > R.stopAtrOk[1] ? "very wide" : "", num(dist) ? "ok" : "missing"));
 
   const q = levels.qty;
-  lines.push(line("size", "Size feasibility", q > 0 ? (levels.capped ? 1 : 2) : 0, 2, q > 0 ? `${q.toLocaleString("en-IN")} shares, ₹${Math.round(levels.exposure).toLocaleString("en-IN")}` : "0 shares", q === 0 ? "one share loses more than the risk budget" : levels.capped ? "capped by the max position value" : `risk ₹${fmt(risk.riskRs, 0)} (${risk.riskPct}% of ₹${risk.capital.toLocaleString("en-IN")})`));
+  lines.push(line("size", "Size feasibility", q > 0 ? (levels.capped ? 1 : 2) : 0, 2, q > 0 ? `${inr(q)} shares, ₹${inr(Math.round(levels.exposure))}` : "0 shares", q === 0 ? "one share loses more than the risk budget" : levels.capped ? "capped by the max position value" : `risk ₹${fmt(risk.riskRs, 0)} (${risk.riskPct}% of ₹${inr(risk.capital)})`));
   gates.push(gate("qty", "Position can be sized", q > 0, q > 0 ? `${q} shares, max loss ₹${fmt(levels.maxLossRs, 0)} incl. charges` : "even one share risks more than the budget"));
 
   const observation = `${num(rr) ? `${fmt(rr, 2)}:1 net` : "no R:R"}; stop ${num(dist) ? `${fmt(dist, 2)} ATR` : "n/a"}; ${q} shares${levels.conditional ? " (conditional)" : ""}`;

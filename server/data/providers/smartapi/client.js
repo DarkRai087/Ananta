@@ -1,7 +1,8 @@
 // Raw SmartAPI HTTP calls behind a rate-limited queue.
 import db from "../../../db.js";
 import { SMARTAPI } from "../../../config/smartapi.js";
-import { ProviderError, sleep, isNetworkError } from "../errors.js";
+import { ProviderError, sleep, isNetworkError } from "../../../errors.js";
+import { isBulk } from "../../../priority.js";
 
 const q = {
   load: db.prepare("SELECT t FROM rate_stamps WHERE name = ? AND t > ? ORDER BY t"),
@@ -9,12 +10,15 @@ const q = {
   trim: db.prepare("DELETE FROM rate_stamps WHERE name = ? AND t <= ?"),
 };
 
-// Sliding-window limiter: requests run one at a time, never exceed any window, and start at
-// least minGapMs apart. With a `shared` name the request times live in SQLite, so the server,
-// the backfill script and workers share one budget (Angel counts per account, not per process).
+// Sliding-window limiter: requests start one at a time, never exceed any window, and at
+// least minGapMs apart. Interactive requests go first; bulk ones (priority.js) wait for a free
+// slot and leave `bulkReserve` of each minute for interactive ones. With a `shared` name the
+// request times live in SQLite, so the server, backfill and workers share one budget (Angel
+// counts per account, not per process).
 export class RateLimiter {
-  constructor({ perSecond = Infinity, perMinute = Infinity, perHour = Infinity, minGapMs = 0 }, now = () => Date.now(), shared = null) {
+  constructor({ perSecond = Infinity, perMinute = Infinity, perHour = Infinity, minGapMs = 0, bulkReserve = 0 }, now = () => Date.now(), shared = null) {
     this.minGapMs = minGapMs;
+    this.bulkReserve = bulkReserve;
     this.windows = [
       [1000, perSecond],
       [60_000, perMinute],
@@ -22,16 +26,17 @@ export class RateLimiter {
     ].filter(([, limit]) => Number.isFinite(limit));
     this.span = Math.max(1000, ...this.windows.map(([span]) => span)); // oldest request that still matters
     this.stamps = [];
-    this.chain = Promise.resolve();
+    this.queues = { high: [], low: [] };
+    this.pumping = false;
     this.now = now;
     this.shared = shared;
   }
 
   // 0 after recording a request now, else how long to wait. Shared: one write transaction, so
   // two processes can't both take the last free slot.
-  take() {
+  take(low = false) {
     if (!this.shared) {
-      const w = this.waitMs();
+      const w = this.waitMs(low);
       if (!w) this.stamps.push(this.now());
       return w;
     }
@@ -40,38 +45,58 @@ export class RateLimiter {
         const old = this.now() - this.span;
         q.trim.run(this.shared, old);
         this.stamps = q.load.all(this.shared, old).map((r) => r.t);
-        const w = this.waitMs();
+        const w = this.waitMs(low);
         if (!w) q.add.run(this.shared, this.now());
         return w;
       })
       .immediate();
   }
 
-  // How long to wait before another request is allowed (0 = now).
-  waitMs() {
+  // How long to wait before another request is allowed (0 = now). low: a bulk request.
+  waitMs(low = false) {
     const t = this.now();
     this.stamps = this.stamps.filter((s) => t - s < 3_600_000);
     const last = this.stamps[this.stamps.length - 1];
     let wait = last != null && this.minGapMs ? Math.max(0, last + this.minGapMs - t) : 0;
     for (const [span, limit] of this.windows) {
+      const lim = low && span === 60_000 ? Math.max(1, limit - this.bulkReserve) : limit;
       const inWindow = this.stamps.filter((s) => t - s < span);
-      if (inWindow.length >= limit) wait = Math.max(wait, inWindow[inWindow.length - limit] + span - t + 5);
+      if (inWindow.length >= lim) wait = Math.max(wait, inWindow[inWindow.length - lim] + span - t + 5);
     }
     return wait;
   }
 
-  acquire() {
-    const run = this.chain.then(async () => {
-      for (let w = this.take(); w > 0; w = this.take()) await sleep(w);
+  acquire(low = isBulk()) {
+    return new Promise((resolve) => {
+      this.queues[low ? "low" : "high"].push(resolve);
+      this.pump();
     });
-    this.chain = run.catch(() => {});
-    return run;
+  }
+
+  // Hands out slots: the high queue first. A bulk wait is cut into 250 ms steps, so an
+  // interactive request that arrives meanwhile isn't stuck behind it.
+  async pump() {
+    if (this.pumping) return;
+    this.pumping = true;
+    const { high, low } = this.queues;
+    while (high.length || low.length) {
+      const bulk = !high.length;
+      let w;
+      try {
+        w = this.take(bulk);
+      } catch {
+        w = 250; // database busy: try again shortly
+      }
+      if (w > 0) await sleep(bulk ? Math.min(w, 250) : w);
+      else (bulk ? low : high).shift()();
+    }
+    this.pumping = false;
   }
 }
 
-const { minGapMs, spareMinute } = SMARTAPI.candleSafety;
+const { minGapMs, spareMinute, bulkReserve } = SMARTAPI.candleSafety;
 const limiters = {
-  candles: new RateLimiter({ ...SMARTAPI.rateLimits.candles, perMinute: SMARTAPI.rateLimits.candles.perMinute - spareMinute, minGapMs }, undefined, "candles"),
+  candles: new RateLimiter({ ...SMARTAPI.rateLimits.candles, perMinute: SMARTAPI.rateLimits.candles.perMinute - spareMinute, minGapMs, bulkReserve }, undefined, "candles"),
   login: new RateLimiter(SMARTAPI.rateLimits.login, undefined, "login"),
   refresh: new RateLimiter(SMARTAPI.rateLimits.refresh, undefined, "refresh"),
   quote: new RateLimiter(SMARTAPI.rateLimits.quote, undefined, "quote"),

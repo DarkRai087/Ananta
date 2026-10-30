@@ -3,6 +3,7 @@ import { watch, off, tf, px, refPrice } from "./planKit.js";
 
 export default defineStrategy({
   id: "cprReversal",
+  levels: ["tc", "pivot", "bc", "r1", "s1"],
   name: "CPR / Pivot Reversal",
   description: "Price tags a support (S1, S2, or the CPR top when coming from above) and closes back above it with a bullish bar → long. Mirror at R1, R2, CPR bottom → short.",
   params: { tolerancePct: 0.1, stopBufferPct: 0.05, entryStart: "09:30", entryEnd: "14:30", targetR: 1.5 },

@@ -3,6 +3,7 @@ import { watch, waiting, off, tf } from "./planKit.js";
 
 export default defineStrategy({
   id: "bbSqueeze",
+  levels: ["bbUpper", "bbMid", "bbLower"],
   name: "Bollinger Squeeze Breakout",
   description: "Bollinger Bands sit inside the Keltner Channel for several bars (a volatility squeeze), then a close above the upper band → long (below the lower band → short). Stop at the middle band.",
   params: { bbPeriod: 20, bbMult: 2, kcMult: 1.5, minSqueezeBars: 6, entryStart: "10:00", entryEnd: "14:30" },

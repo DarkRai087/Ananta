@@ -18,7 +18,6 @@ import db from "../db.js";
 import * as yahoo from "./providers/yahoo.js";
 import * as smartapi from "./providers/smartapi/index.js";
 
-export { ProviderError } from "./providers/errors.js";
 
 export const PROVIDERS = { yahoo, smartapi };
 
@@ -31,11 +30,7 @@ export function labProvider() {
   const want = (process.env.LAB_PROVIDER || "").toLowerCase();
   if (PROVIDERS[want]) return PROVIDERS[want];
   if (smartapi.isConfigured()) return smartapi;
-  hasSmartapiRows ??= Boolean(db.prepare("SELECT 1 FROM lab_candles WHERE source = 'smartapi' LIMIT 1").get());
+  hasSmartapiRows ??= Boolean(db.prepare("SELECT 1 FROM candles WHERE source = 'smartapi' LIMIT 1").get());
   return hasSmartapiRows ? smartapi : yahoo;
 }
 
-// Phase 1 interface (daily chart), unchanged.
-export const name = yahoo.name;
-export const INTERVALS = yahoo.INTERVALS;
-export const fetchCandles = yahoo.fetchCandles;

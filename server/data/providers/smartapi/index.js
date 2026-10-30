@@ -1,7 +1,7 @@
 // Angel One SmartAPI provider. Same interface as the Yahoo provider:
 //   id, name, INTERVALS, LAB_INTERVALS, isConfigured(), fetchCandles(symbol, interval, opts)
 import { SMARTAPI } from "../../../config/smartapi.js";
-import { ProviderError, sleep } from "../errors.js";
+import { ProviderError, sleep } from "../../../errors.js";
 import { apiPost } from "./client.js";
 import { getJwt, renewJwt, isConfigured as configured, credentials } from "./auth.js";
 import { getToken } from "./instruments.js";

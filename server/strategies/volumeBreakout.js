@@ -1,8 +1,10 @@
 import { defineStrategy } from "./common.js";
+import { inr } from "../decision/util.js";
 import { watch, waiting, off, tf, barAtr } from "./planKit.js";
 
 export default defineStrategy({
   id: "volumeBreakout",
+  levels: ["dayHigh", "dayLow"],
   name: "Volume Breakout",
   description: "A bar with volume ≥ 2× the previous 20-bar average that closes beyond the recent high/low. Stop at the breakout bar's other end. (Indices have no volume, so no trades there.)",
   params: { volMult: 2, volPeriod: 20, lookback: 10, entryStart: "09:30", entryEnd: "14:30" },
@@ -35,7 +37,7 @@ export default defineStrategy({
     const hh = ctx.highest(p.lookback, "high", 0);
     const ll = ctx.lowest(p.lookback, "low", 0);
     const a = barAtr(ctx, hh);
-    const vol = Math.round(p.volMult * avg).toLocaleString("en-IN");
+    const vol = inr(Math.round(p.volMult * avg));
     return watch(
       [
         { side: "long", trigger: hh, when: `green ${tf(ctx)} close above the ${p.lookback}-bar high with volume ≥ ${vol}`, stop: hh - a, approx: true },

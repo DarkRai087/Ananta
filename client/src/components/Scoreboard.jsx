@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { fmtPct, fmtR, fmtRs, fmtNum } from "../format.js";
 import { winTitle } from "./WinRate.jsx";
 import StrategyDetail, { hasEngine } from "./StrategyDetail.jsx";
+import ErrorBoundary from "./ErrorBoundary.jsx";
 
 const COLS = [
   { key: "name", label: "Strategy", get: (r) => r.name, text: true },
@@ -147,7 +148,7 @@ export default function Scoreboard({ result, symbol, account, metaStrategies, pl
                           {c.key === "name" ? (
                             <>
                               <span className="arrow">{open ? "▾" : "▸"}</span> {r.name}
-                              {hasEngine(r.id) && <span className="badge pos sb-tag" title="Full multi-factor decision engine">decision engine</span>}
+                              {hasEngine(metaStrategies?.find((x) => x.id === r.id)) && <span className="badge pos sb-tag" title="Full multi-factor decision engine">decision engine</span>}
                             </>
                           ) : c.cell ? (
                             c.cell(m)
@@ -163,16 +164,18 @@ export default function Scoreboard({ result, symbol, account, metaStrategies, pl
                   {open && (
                     <tr className="sub sb-detail">
                       <td colSpan={COLS.length}>
-                        <StrategyDetail
-                          row={r}
-                          m={m}
-                          meta={metaStrategies?.find((x) => x.id === r.id)}
-                          plan={plans?.strategies?.find((x) => x.id === r.id)}
-                          symbol={symbol}
-                          interval={result.interval}
-                          account={account}
-                          onChartLevels={onChartLevels}
-                        />
+                        <ErrorBoundary name="The strategy details" resetKey={`${r.id}|${symbol}`}>
+                          <StrategyDetail
+                            row={r}
+                            m={m}
+                            meta={metaStrategies?.find((x) => x.id === r.id)}
+                            plan={plans?.strategies?.find((x) => x.id === r.id)}
+                            symbol={symbol}
+                            interval={result.interval}
+                            account={account}
+                            onChartLevels={onChartLevels}
+                          />
+                        </ErrorBoundary>
                       </td>
                     </tr>
                   )}

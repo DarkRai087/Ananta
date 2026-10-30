@@ -10,10 +10,13 @@
 // (missing data scores 0). Lower minScore in the Lab to study how the score relates to results.
 import { defineStrategy } from "./common.js";
 import { watch, armed, waiting, off, tf, px, orEnd } from "./planKit.js";
-import { evaluate, triggersNow, ORB } from "../orbEngine/index.js";
+import { evaluate, triggersNow, configFor, ORB } from "../orbEngine/index.js";
+import { buildOrbReport } from "../orbEngine/report.js";
 
 export default defineStrategy({
   id: "orb",
+  levels: ["orHigh", "orLow"],
+  decision: { evaluate, configFor, build: buildOrbReport, vix: true, report: "orb" },
   name: "Opening Range Breakout",
   description:
     "Multi-factor ORB: a completed close beyond the opening range, then acceptance (A), a held retest (B) or a momentum candle (C). Trades only when range quality, market, relative volume, candle, confirmation, VWAP / momentum, relative strength and risk score ≥ 85/100 and every mandatory check passes; failed and chased breakouts are skipped.",

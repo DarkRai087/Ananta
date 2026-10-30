@@ -11,7 +11,7 @@
 // Relative volume = volume ÷ average volume of the previous 20 candles (this session only).
 // True cumulative volume delta and absorption need tick data the feed doesn't provide: always
 // listed as missing, never estimated.
-import { line, factor, num, fmt } from "../../decision/util.js";
+import { line, factor, num, fmt, inr } from "../../decision/util.js";
 import { candleMetrics } from "./priceAction.js";
 
 export function volumeFactor(D) {
@@ -110,7 +110,7 @@ export function volumeFactor(D) {
   if (quote?.fresh && quote.totBuy > 0 && quote.totSell > 0) {
     const ratio = long ? quote.totBuy / quote.totSell : quote.totSell / quote.totBuy;
     const pts = ratio >= V.bookStrong ? 3 : ratio >= V.bookFair ? 1 : 0;
-    lines.push(line("book", "Live order book", pts, 3, `bids ${quote.totBuy.toLocaleString("en-IN")} / asks ${quote.totSell.toLocaleString("en-IN")}`, `${long ? "bid/ask" : "ask/bid"} ${fmt(ratio, 2)} — resting orders only, can be pulled`));
+    lines.push(line("book", "Live order book", pts, 3, `bids ${inr(quote.totBuy)} / asks ${inr(quote.totSell)}`, `${long ? "bid/ask" : "ask/bid"} ${fmt(ratio, 2)} — resting orders only, can be pulled`));
   } else {
     lines.push(line("book", "Live order book", 0, 3, null, quote ? "quote too old" : "bid/ask imbalance needs a live SmartAPI quote (never in backtests)", "missing"));
   }

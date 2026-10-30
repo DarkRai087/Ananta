@@ -5,8 +5,9 @@ import { PREDICTION } from "../config/prediction.js";
 import { INTRADAY_MODELS } from "./models/index.js";
 import { callOf, summarize, ensembleScore, CALL_NAME } from "./evaluate.js";
 import { istMinute, minToHHMM } from "../lab/time.js";
+import { lru } from "../lru.js";
 
-const cache = new Map();
+const cache = lru({ max: 200 });
 const paramsOf = (m) => ({ ...m.params, ...(PREDICTION.models[m.id] || {}) });
 
 // Bars of a session that had closed by minute-of-day `cut`.
@@ -68,10 +69,7 @@ export function runIntraday({ past, today, cut, intervalMin, key = null, index =
     }
     evals = Object.fromEntries(ids.map((id) => [id, summarize(samples[id], { horizon: 1, minCalls: cfg.minCalls })]));
     evals._tested = tested;
-    if (ck) {
-      cache.set(ck, evals);
-      if (cache.size > 200) cache.delete(cache.keys().next().value);
-    }
+    if (ck) cache.set(ck, evals);
   }
 
   const live = today ? predictAll(viewOf(today, today.candles, intervalMin, index, cut), models) : {};

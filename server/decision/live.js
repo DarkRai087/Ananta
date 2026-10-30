@@ -5,6 +5,14 @@
 //
 // Outside market hours it evaluates the last bar of the last session, which the session filter
 // rejects: the report then explains why there is no trade instead of inventing one.
+//
+// Response contract (client: components/StrategyDetail.jsx picks the view by `report`):
+//   common   strategy, report ("orb" | "vwap"), symbol, interval, phase, label, decision, why,
+//            score, gates, chart (levels for "Show on chart"), warnings, atTrigger
+//   sections letters follow each engine's spec. orb: A market · B opening range · C breakout ·
+//            D technical · E scorecard · F trade parameters · G explanation · H no-trade.
+//            vwap: A market · B σ bands · C scorecard · D trade plan · E explanation · F no-trade.
+//   no data  only F and H (the same no-trade box) are set, so either view can show it.
 import { LAB } from "../config/lab.js";
 import { MARKET_INDEX } from "../config/indices.js";
 import { loadSessions, settingsWithDefaults } from "../backtest/run.js";
@@ -17,17 +25,6 @@ import { liveQuote, niftyBreadth, indiaVix, instrumentTick } from "../data/quote
 import { getStrategy, resolveParams } from "../strategies/index.js";
 import { istNow, istDate, istHHMM, CLOSE_MIN } from "../lab/time.js";
 import { resolveRisk } from "./sizing.js";
-import * as vwap from "../vwapReversion/index.js";
-import { buildReport as buildVwapReport } from "../vwapReversion/report.js";
-import * as orb from "../orbEngine/index.js";
-import { buildOrbReport } from "../orbEngine/report.js";
-
-const ENGINES = {
-  vwapBands: { evaluate: vwap.evaluate, configFor: vwap.configFor, build: buildVwapReport, vix: false },
-  orb: { evaluate: orb.evaluate, configFor: orb.configFor, build: buildOrbReport, vix: true },
-};
-export const hasDecisionReport = (id) => Object.prototype.hasOwnProperty.call(ENGINES, id);
-export const DECISION_STRATEGIES = Object.keys(ENGINES);
 
 // Tops up the symbol and its indices (only bars newer than the cache are fetched).
 export async function syncForReport(symbol, interval) {
@@ -51,7 +48,7 @@ const noData = (strategy, symbol, interval) => {
 };
 
 export async function decisionReport({ strategy, symbol: raw, interval = LAB.defaultInterval, account: accountInput = {}, params: overrides = {}, nowMs = Date.now() }) {
-  const engine = ENGINES[strategy];
+  const engine = getStrategy(strategy).decision; // the engine lives on the strategy (strategies/common.js)
   if (!engine) throw new Error(`No decision report for strategy "${strategy}"`);
   const symbol = String(raw || "").toUpperCase();
   const intervalMin = LAB.intervals[interval];
@@ -64,7 +61,7 @@ export async function decisionReport({ strategy, symbol: raw, interval = LAB.def
 
   const back = Math.max(LAB.historyDays, LAB.profileDays) + 5;
   const sessions = loadSessions(symbol, interval, { from: istDate(sessionsBack(back, now.t)) }).filter((s) => !s.special && s.date <= now.date);
-  if (!sessions.length) return noData(strategy, symbol, interval);
+  if (!sessions.length) return { ...noData(strategy, symbol, interval), report: engine.report };
   const todayFull = sessions.find((s) => s.date === now.date) || null;
   const live = Boolean(todayFull) && now.minute < CLOSE_MIN;
   let session;
@@ -151,6 +148,7 @@ export async function decisionReport({ strategy, symbol: raw, interval = LAB.def
       params,
     }),
     strategy,
+    report: engine.report,
     date: session.date,
     index: { nifty: MARKET_INDEX, sector: marketIdsFor(symbol).sectorId },
     account,

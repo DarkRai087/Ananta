@@ -1,9 +1,8 @@
 // The ORB decision dashboard (sections A–F of the spec, plus the decision explanation) from one
 // evaluation. Trade numbers appear only when the decision allows them: NO TRADE never carries an
 // entry, stop, target or quantity — only the exact failed conditions and what has to change.
-import { num, roundTick } from "../decision/util.js";
+import { num, roundTick, rs } from "../decision/util.js";
 
-const rs = (x) => (num(x) ? `₹${x.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—");
 const f2 = (x, d = 2) => (num(x) ? x.toFixed(d) : "—");
 const dirWord = (d) => (d > 0 ? "Up" : d < 0 ? "Down" : "Mixed");
 const MODEL = { A: "Close + acceptance", B: "Breakout and retest", C: "Momentum" };

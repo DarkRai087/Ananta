@@ -17,6 +17,7 @@ function quietDay(daily, setup) {
 
 export default defineStrategy({
   id: "nr7Orb",
+  levels: ["orHigh", "orLow"],
   name: "NR7 / Inside-Day ORB",
   description: "Only after a quiet day: yesterday had the narrowest range of the last 7 (NR7) or 4 (NR4) days, or was an inside day. Then trade the opening range breakout, expecting the range to expand. Stop at the other side of the range.",
   params: { setup: "nr7", orMinutes: 15, bufferPct: 0.05, entryStart: "09:30", entryEnd: "12:00" },

@@ -7,7 +7,7 @@
 // Industry peers: not available (only the sector index) — listed as missing.
 // Hard gates: traded value per minute, 20-day average daily value, participation, and (live)
 // the spread and the distance to a circuit limit.
-import { line, factor, gate, num, fmt } from "../../decision/util.js";
+import { line, factor, gate, num, fmt, inr } from "../../decision/util.js";
 
 const lakh = (x) => (num(x) ? (x >= 1e7 ? `₹${(x / 1e7).toFixed(2)} cr` : `₹${(x / 1e5).toFixed(2)} L`) : "—");
 const signed = (x) => (num(x) ? `${x >= 0 ? "+" : ""}${x.toFixed(2)}%` : "—");
@@ -61,7 +61,7 @@ export function strengthFactor(D) {
   let spreadPct = null;
   if (quote?.fresh && num(quote.spreadPct)) {
     spreadPct = quote.spreadPct;
-    lines.push(line("spread", "Live spread", spreadPct <= L.spreadGood ? 1 : 0, 1, `bid ${fmt(quote.bid)} / ask ${fmt(quote.ask)} (${fmt(spreadPct, 3)}%)`, `top-5 depth: ${quote.bidDepth.toLocaleString("en-IN")} bid / ${quote.askDepth.toLocaleString("en-IN")} ask`));
+    lines.push(line("spread", "Live spread", spreadPct <= L.spreadGood ? 1 : 0, 1, `bid ${fmt(quote.bid)} / ask ${fmt(quote.ask)} (${fmt(spreadPct, 3)}%)`, `top-5 depth: ${inr(quote.bidDepth)} bid / ${inr(quote.askDepth)} ask`));
     gates.push(gate("spread", "Spread acceptable", spreadPct <= L.maxSpreadPct, `spread ${fmt(spreadPct, 3)}% (limit ${L.maxSpreadPct}%)`));
   } else {
     lines.push(line("spread", "Live spread", 0, 1, null, quote ? "quote too old" : "bid / ask need a live SmartAPI quote (never in backtests)", "missing"));

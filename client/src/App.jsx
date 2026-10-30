@@ -3,6 +3,7 @@ import TodayPage from "./pages/TodayPage.jsx";
 import LabPage from "./pages/LabPage.jsx";
 import { useLabMeta } from "./hooks.js";
 import { store } from "./format.js";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 export default function App() {
   const { meta, error } = useLabMeta();
@@ -36,8 +37,10 @@ export default function App() {
       </nav>
       {error && <div className="banner error">{error}</div>}
       {!meta && !error && <div className="small muted pad">Loading…</div>}
-      {meta && page === "today" && <TodayPage meta={meta} symbol={symbol} setSymbol={setSymbol} />}
-      {meta && page === "lab" && <LabPage meta={meta} symbol={symbol} setSymbol={setSymbol} />}
+      <ErrorBoundary name="This page" resetKey={page}>
+        {meta && page === "today" && <TodayPage meta={meta} symbol={symbol} setSymbol={setSymbol} />}
+        {meta && page === "lab" && <LabPage meta={meta} symbol={symbol} setSymbol={setSymbol} />}
+      </ErrorBoundary>
     </div>
   );
 }

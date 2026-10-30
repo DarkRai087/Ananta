@@ -32,7 +32,9 @@ export const SMARTAPI = {
 
   // Our margin on top of the documented limits. Network delay varies, so two requests sent a
   // second apart can reach Angel closer together and get "exceeding access rate".
-  candleSafety: { minGapMs: 600, spareMinute: 5 },
+  // bulkReserve: candle requests per minute that bulk work (job syncs, backfill) leaves free
+  // for interactive ones (chart, plans, reports), whichever process they come from.
+  candleSafety: { minGapMs: 600, spareMinute: 5, bulkReserve: 15 },
 
   // Retries on "exceeding access rate" (HTTP 403) / network errors: 2s, 4s, 8s, 16s, 32s.
   backoff: { retries: 5, baseMs: 2000 },

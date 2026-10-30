@@ -11,7 +11,11 @@ export const num = (x) => x != null && Number.isFinite(x);
 export const r2 = (x) => (num(x) ? Math.round(x * 100) / 100 : null);
 export const pct = (a, b) => (num(a) && num(b) && b !== 0 ? (a / b - 1) * 100 : null);
 export const fmt = (x, d = 2) => (num(x) ? x.toFixed(d) : "—");
-export const rs = (x) => (num(x) ? `₹${x.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—");
+// Reused formatters: toLocaleString("en-IN") builds a new one per call (~25× slower).
+const INR = new Intl.NumberFormat("en-IN");
+const INR2 = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const inr = (x) => INR.format(x);
+export const rs = (x) => (num(x) ? `₹${INR2.format(x)}` : "—");
 
 // NSE tick for a price (config table), unless the instrument's own tick is known.
 export function tickFor(price, tick = null) {

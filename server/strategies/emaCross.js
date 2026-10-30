@@ -3,6 +3,7 @@ import { watch, waiting, tf, px } from "./planKit.js";
 
 export default defineStrategy({
   id: "emaCross",
+  levels: ["ema9", "ema21"],
   name: "9/21 EMA Crossover",
   description: "Fast EMA crosses the slow EMA (both restart each session). Stop at the recent swing; optional exit on the opposite cross. Best on 5m.",
   defaultInterval: "5m",

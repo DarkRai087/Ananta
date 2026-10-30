@@ -3,6 +3,7 @@ import { watch, armed, waiting, off, tf, px, barAtr } from "./planKit.js";
 
 export default defineStrategy({
   id: "meanReversion",
+  levels: ["bbUpper", "bbMid", "bbLower"],
   name: "RSI / Bollinger Mean Reversion",
   description: "Midday only by default. Price closes back inside the lower band after RSI was oversold → long to the middle band (short: mirror at the upper band).",
   params: {

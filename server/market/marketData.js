@@ -6,6 +6,7 @@ import { loadIntraday, cachedBounds } from "../data/intraday.js";
 import { buildSessions } from "../lab/sessions.js";
 import { istEpoch } from "../lab/time.js";
 import { attachMarket } from "./marketContext.js";
+import { lru } from "../lru.js";
 
 // The indices a symbol is compared with: NIFTY 50, plus its own sector index if it has one.
 export function marketIdsFor(symbol) {
@@ -17,7 +18,7 @@ export function marketIdsFor(symbol) {
 
 // Index sessions per id|interval|from|last cached bar: a backtest or ranking run reuses them, and
 // a new live bar (the server runs all day) makes a new key.
-const cache = new Map();
+const cache = lru({ max: 1_000_000, cost: (ss) => ss.reduce((n, s) => n + s.candles.length, 0) }); // ≤ 1M index candles
 
 function indexSessions(id, interval, from) {
   if (!id) return [];
@@ -28,12 +29,10 @@ function indexSessions(id, interval, from) {
     /* no bounds: load anyway */
   }
   const key = `${id}|${interval}|${from}|${last}`;
-  if (!cache.has(key)) {
+  return cache.use(key, () => {
     const fromSec = from ? istEpoch(from) - 10 * 86400 : 0; // a few days early so the first session has its previous close
-    cache.set(key, buildSessions(loadIntraday(id, interval, { fromSec })).filter((x) => !x.special));
-    if (cache.size > 40) cache.delete(cache.keys().next().value);
-  }
-  return cache.get(key);
+    return buildSessions(loadIntraday(id, interval, { fromSec })).filter((x) => !x.special);
+  });
 }
 
 export function clearMarketCache() {

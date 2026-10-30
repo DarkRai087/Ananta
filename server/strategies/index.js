@@ -25,19 +25,22 @@ export const STRATEGIES = [
 
 export const STRATEGY_BY_ID = Object.fromEntries(STRATEGIES.map((s) => [s.id, s]));
 
+// Strategies with a decision engine (a full live report).
+export const DECISION_STRATEGIES = STRATEGIES.filter((s) => s.decision).map((s) => s.id);
+
 export function getStrategy(id) {
   const s = STRATEGY_BY_ID[id];
   if (!s) throw new Error(`Unknown strategy "${id}"`);
   return s;
 }
 
-// Defaults + user overrides, coerced to the default's type.
+// Defaults + user overrides, coerced to the default's type (a number that isn't one keeps the default).
 export function resolveParams(strategy, overrides = {}) {
   const out = { ...strategy.params };
   for (const [k, v] of Object.entries(overrides || {})) {
     if (!(k in out) || v === undefined || v === null || v === "") continue;
     const d = out[k];
-    if (typeof d === "number") out[k] = Number(v);
+    if (typeof d === "number") out[k] = Number.isFinite(Number(v)) ? Number(v) : d;
     else if (typeof d === "boolean") out[k] = v === true || v === "true";
     else out[k] = String(v);
   }
@@ -45,5 +48,5 @@ export function resolveParams(strategy, overrides = {}) {
 }
 
 export function strategyList() {
-  return STRATEGIES.map((s) => ({ id: s.id, name: s.name, description: s.description, params: s.params, spec: s.spec }));
+  return STRATEGIES.map((s) => ({ id: s.id, name: s.name, description: s.description, params: s.params, spec: s.spec, report: s.decision?.report ?? null }));
 }

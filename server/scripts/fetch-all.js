@@ -7,7 +7,8 @@
 // Safe to stop with Ctrl+C at any time; the next run continues where it left off.
 import db from "../db.js";
 import { ensureSymbolList, allEquitySymbols, INDICES } from "../data/symbols.js";
-import { refreshCandles, AppError } from "../data/candles.js";
+import { refreshCandles } from "../data/candles.js";
+import { AppError } from "../errors.js";
 
 const args = process.argv.slice(2);
 const restart = args.includes("--restart");
@@ -20,6 +21,7 @@ const NOT_FOUND_SKIP_MS = 7 * 86400_000; // don't retry unknown symbols for a we
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const getProgress = db.prepare("SELECT status, updated_at FROM bulk_progress WHERE symbol = ?");
+const countDaily = db.prepare("SELECT COUNT(*) AS n FROM candles WHERE source = 'yahoo' AND symbol = ? AND interval = '1d'");
 const setProgress = db.prepare(
   "INSERT OR REPLACE INTO bulk_progress (symbol, status, message, updated_at) VALUES (?, ?, ?, ?)"
 );
@@ -70,9 +72,10 @@ async function main() {
       try {
         const { added, warning } = await refreshCandles(symbol, "1d", { force: true });
         if (warning) throw new AppError(503, "NETWORK", warning);
+        const total = countDaily.get(symbol).n;
+        if (!total) throw new AppError(404, "NOT_FOUND", `No data for ${symbol}`);
         setProgress.run(symbol, "done", null, Date.now());
         ok++;
-        const total = db.prepare("SELECT COUNT(*) AS n FROM candles WHERE symbol = ? AND interval = '1d'").get(symbol).n;
         console.log(`${prefix} +${added} candles (${total} total)`);
         break;
       } catch (err) {

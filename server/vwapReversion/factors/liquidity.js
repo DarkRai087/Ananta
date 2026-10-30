@@ -8,7 +8,7 @@
 //
 // Hard gates: traded value per minute, 20-day average daily traded value, participation, and
 // (live) the spread and the distance to a circuit limit.
-import { ptsAtOrAbove, ptsAtOrBelow, line, factor, gate, num, fmt } from "../../decision/util.js";
+import { ptsAtOrAbove, ptsAtOrBelow, line, factor, gate, num, fmt, inr } from "../../decision/util.js";
 
 const lakh = (x) => (num(x) ? (x >= 1e7 ? `₹${(x / 1e7).toFixed(2)} cr` : `₹${(x / 1e5).toFixed(2)} L`) : "—");
 
@@ -43,7 +43,7 @@ export function liquidityFactor(D) {
   const qty = levels?.qty ?? 0;
   if (levels && qty > 0 && avgBarVol > 0) {
     const part = qty / avgBarVol;
-    lines.push(line("participation", "Participation", ptsAtOrBelow(L.participationPoints, part), 2, `${fmt(part * 100, 2)}% of an average bar`, `${qty.toLocaleString("en-IN")} shares vs ${Math.round(avgBarVol).toLocaleString("en-IN")} per bar`));
+    lines.push(line("participation", "Participation", ptsAtOrBelow(L.participationPoints, part), 2, `${fmt(part * 100, 2)}% of an average bar`, `${inr(qty)} shares vs ${inr(Math.round(avgBarVol))} per bar`));
     gates.push(gate("participation", "Size fits the market", part <= L.maxParticipation, `${fmt(part * 100, 1)}% of an average bar's volume (limit ${L.maxParticipation * 100}%)`));
   } else {
     lines.push(line("participation", "Participation", 0, 2, null, !levels ? "no trade levels yet" : !hasVol ? "no volume data" : "no quantity", !levels || qty === 0 ? "na" : "missing"));
@@ -62,7 +62,7 @@ export function liquidityFactor(D) {
     const sp = ptsAtOrBelow(L.spreadPoints, spreadPct);
     depthSide = long ? quote.askDepth : quote.bidDepth;
     const dp = qty > 0 && depthSide >= L.depthCover * qty ? 1 : 0;
-    lines.push(line("spread", "Spread and depth", sp + dp, 3, `bid ${fmt(quote.bid)} / ask ${fmt(quote.ask)} (${fmt(spreadPct, 3)}%)`, `top-5 ${long ? "ask" : "bid"} depth ${depthSide.toLocaleString("en-IN")}${qty > 0 ? ` vs our ${qty.toLocaleString("en-IN")}` : ""}`));
+    lines.push(line("spread", "Spread and depth", sp + dp, 3, `bid ${fmt(quote.bid)} / ask ${fmt(quote.ask)} (${fmt(spreadPct, 3)}%)`, `top-5 ${long ? "ask" : "bid"} depth ${inr(depthSide)}${qty > 0 ? ` vs our ${inr(qty)}` : ""}`));
     gates.push(gate("spread", "Spread acceptable", spreadPct <= L.maxSpreadPct, `spread ${fmt(spreadPct, 3)}% (limit ${L.maxSpreadPct}%)`));
   } else {
     lines.push(line("spread", "Spread and depth", 0, 3, null, quote ? "quote too old" : "bid / ask / depth need a live SmartAPI quote (never in backtests)", "missing"));

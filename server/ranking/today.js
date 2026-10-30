@@ -19,29 +19,7 @@ import { universeSymbols, isUniverse, UNIVERSES } from "../data/universes.js";
 import { referenceIndex, indexName } from "../data/indexMembers.js";
 import { attachIndex } from "../market/indexLink.js";
 import { INDEX_FILTER } from "../config/indices.js";
-
-// Which of today's levels each strategy cares about (drawn when its card is clicked).
-const LEVELS_FOR = {
-  orb: ["orHigh", "orLow"],
-  vwapPullback: ["vwap"],
-  emaCross: ["ema9", "ema21"],
-  volumeBreakout: ["dayHigh", "dayLow"],
-  pdhPdl: ["pdh", "pdl"],
-  cprReversal: ["tc", "pivot", "bc", "r1", "s1"],
-  gapAndGo: ["orHigh", "orLow", "pdc"],
-  gapFade: ["orHigh", "orLow", "pdc"],
-  supertrend: ["supertrend"],
-  meanReversion: ["bbUpper", "bbMid", "bbLower"],
-  orbFakeout: ["orHigh", "orLow"],
-  openHighLow: ["open", "orHigh", "orLow", "vwap"],
-  camarilla: ["h4", "h3", "l3", "l4"],
-  narrowCpr: ["tc", "bc", "orHigh", "orLow", "vwap"],
-  vwapBands: ["vwapUpper", "vwap", "vwapLower"],
-  bbSqueeze: ["bbUpper", "bbMid", "bbLower"],
-  afternoonMomentum: ["vwap", "pdc"],
-  nr7Orb: ["orHigh", "orLow"],
-  atrExhaustion: ["dayHigh", "dayLow", "vwap"],
-};
+import { lru } from "../lru.js";
 
 const LEVEL_LABELS = {
   orHigh: "OR high", orLow: "OR low", vwap: "VWAP", ema9: "EMA 9", ema21: "EMA 21", dayHigh: "Day high",
@@ -80,6 +58,46 @@ function todayLevels(today, last, intervalMin) {
 
 const pct = (x) => (x == null ? "—" : `${x.toFixed(1)}%`);
 
+// The window's backtest ends yesterday, so it is the same all day: it runs once per day per
+// request shape and is kept here (the jobs pool sends one target's refreshes to one worker).
+const windowCache = lru({ max: 4 });
+
+// Every strategy over the last `window` sessions before today, without and with the index
+// filter (one pass, shared indicators), so the scoreboard can show whether trading with the
+// index helps.
+function backtestWindow({ symbols, interval, window, oosSessions, settings, compareWith, now, onProgress }) {
+  const loadFrom = istDate(sessionsBack(window + LAB.context.atrDays + 5, now.t));
+  const allDates = new Set();
+  const perSymbol = symbols.map((symbol) => {
+    const hist = loadSessions(symbol, interval, { from: loadFrom }).filter((s) => !s.special && s.date < now.date);
+    hist.slice(-window).forEach((s) => allDates.add(s.date));
+    return { symbol, hist };
+  });
+  const dates = [...allDates].sort().slice(-window);
+  const oosFrom = dates.length ? dates[Math.max(0, dates.length - oosSessions)] : null;
+  const windowFrom = dates[0] ?? null;
+
+  // Each stock's index (its sector index, or NIFTY 50), lined up bar by bar.
+  const refBySymbol = {};
+  const indexCache = new Map();
+  for (const p of perSymbol) {
+    const ref = referenceIndex(p.symbol, compareWith);
+    refBySymbol[p.symbol] = ref;
+    if (!ref) continue;
+    if (!indexCache.has(ref)) indexCache.set(ref, loadSessions(ref, interval, { from: loadFrom }).filter((x) => !x.special));
+    attachIndex(p.hist, indexCache.get(ref), { indexId: ref });
+  }
+
+  const symbolSessions = perSymbol.map((p) => ({ symbol: p.symbol, sessions: p.hist.filter((s) => windowFrom && s.date >= windowFrom) }));
+  const entries = STRATEGIES.flatMap((x) => [
+    { id: x.id, key: `${x.id}|off`, settings: { indexFilter: "off" } },
+    { id: x.id, key: `${x.id}|on`, settings: { indexFilter: compareWith } },
+  ]);
+  const t = runStrategies(symbolSessions, entries, { interval, settings, onProgress }).tradesByStrategy;
+  const pick = (v) => Object.fromEntries(STRATEGIES.map((x) => [x.id, t[`${x.id}|${v}`]]));
+  return { oosFrom, windowFrom, refBySymbol, base: pick("off"), withIndex: pick("on") };
+}
+
 export function computeToday({ target, interval = LAB.defaultInterval, oosSessions = LAB.ranking.oosSessions, settings = {}, nowMs = Date.now(), onProgress } = {}) {
   const T = String(target).toUpperCase();
   const universe = isUniverse(T);
@@ -91,22 +109,24 @@ export function computeToday({ target, interval = LAB.defaultInterval, oosSessio
   const freezeMin = hhmmToMin(LAB.ranking.freezeAt);
   const minTrades = LAB.ranking.minTrades;
 
-  // 1. Sessions per symbol.
-  const perSymbol = [];
-  const allDates = new Set();
-  const loadFrom = istDate(sessionsBack(window + LAB.context.atrDays + 5, now.t));
-  for (const symbol of symbols) {
-    const sessions = loadSessions(symbol, interval, { from: loadFrom, doneBy: now.t }).filter((s) => !s.special);
-    const today = sessions.find((s) => s.date === now.date) || null;
-    const hist = sessions.filter((s) => s.date < now.date);
-    hist.slice(-window).forEach((s) => allDates.add(s.date));
-    perSymbol.push({ symbol, today, hist, last: hist[hist.length - 1] || null });
-  }
-  const dates = [...allDates].sort().slice(-window);
-  const oosFrom = dates.length ? dates[Math.max(0, dates.length - oosSessions)] : null;
-  const windowFrom = dates[0] ?? null;
+  const st = settingsWithDefaults(settings);
+  const indexChoice = st.indexFilter || "off";
+  const compareWith = indexChoice === "off" ? "sector" : indexChoice;
 
-  // 2. Today's context per symbol.
+  // 1. The window backtest (cached for the day).
+  const key = [now.date, T, interval, oosSessions, JSON.stringify(settings)].join("|");
+  const { oosFrom, windowFrom, refBySymbol, base, withIndex } = windowCache.use(key, () =>
+    backtestWindow({ symbols, interval, window, oosSessions, settings, compareWith, now, onProgress })
+  );
+  const tradesByStrategy = indexChoice === "off" ? base : withIndex;
+
+  // 2. Today per symbol: its context needs only the previous day and the ATR days before it.
+  const recentFrom = istDate(sessionsBack(LAB.context.atrDays + 5, now.t));
+  const perSymbol = symbols.map((symbol) => {
+    const ss = loadSessions(symbol, interval, { from: recentFrom, doneBy: now.t }).filter((s) => !s.special);
+    const hist = ss.filter((s) => s.date < now.date);
+    return { symbol, today: ss.find((s) => s.date === now.date) || null, last: hist[hist.length - 1] || null };
+  });
   const ctxBySymbol = {};
   for (const p of perSymbol) if (p.today?.context?.ready) ctxBySymbol[p.symbol] = p.today.context;
   const anyToday = perSymbol.some((p) => p.today);
@@ -129,29 +149,6 @@ export function computeToday({ target, interval = LAB.defaultInterval, oosSessio
         : "Market closed today — ranking on recent performance (no today context)";
   }
   const useContext = readyCount > 0;
-
-  // 3. Each stock's index (its sector index, or NIFTY 50), lined up bar by bar.
-  const st = settingsWithDefaults(settings);
-  const indexChoice = st.indexFilter || "off";
-  const compareWith = indexChoice === "off" ? "sector" : indexChoice;
-  const refBySymbol = {};
-  const indexCache = new Map();
-  for (const p of perSymbol) {
-    const ref = referenceIndex(p.symbol, compareWith);
-    refBySymbol[p.symbol] = ref;
-    if (!ref) continue;
-    if (!indexCache.has(ref)) indexCache.set(ref, loadSessions(ref, interval, { from: loadFrom }).filter((x) => !x.special));
-    attachIndex(p.hist, indexCache.get(ref), { indexId: ref });
-  }
-
-  // 4. Backtest all strategies over the window — without and with the index filter, so the
-  // scoreboard can show whether trading with the index helps.
-  const symbolSessions = perSymbol.map((p) => ({ symbol: p.symbol, sessions: p.hist.filter((s) => windowFrom && s.date >= windowFrom) }));
-  const ids = STRATEGIES.map((s) => ({ id: s.id }));
-  const half = (d, t) => onProgress?.(d, 2 * t);
-  const base = runStrategies(symbolSessions, ids, { interval, settings: { ...settings, indexFilter: "off" }, onProgress: half }).tradesByStrategy;
-  const withIndex = runStrategies(symbolSessions, ids, { interval, settings: { ...settings, indexFilter: compareWith }, onProgress: (d, t) => onProgress?.(t + d, 2 * t) }).tradesByStrategy;
-  const tradesByStrategy = indexChoice === "off" ? base : withIndex;
 
   // 4. Scoreboard + ranking.
   const scoreboard = [];
@@ -176,7 +173,7 @@ export function computeToday({ target, interval = LAB.defaultInterval, oosSessio
 
     const pool = useContext ? row.like.oos : row.all.oos;
     const poolDays = new Set((useContext ? like : trades).filter((t) => t.date >= oosFrom).map((t) => t.date)).size;
-    candidates.push({ id: s.id, name: s.name, m: pool, days: poolDays });
+    candidates.push({ id: s.id, name: s.name, m: pool, days: poolDays, levelKeys: s.levels || [] });
   }
 
   const ctxText = !useContext
@@ -216,7 +213,7 @@ export function computeToday({ target, interval = LAB.defaultInterval, oosSessio
     trades: c.m.trades,
     days: c.days,
     levels: single
-      ? (LEVELS_FOR[c.id] || [])
+      ? c.levelKeys
           .filter((k2) => levels[k2] != null && Number.isFinite(levels[k2]))
           .map((k2) => ({ key: k2, label: LEVEL_LABELS[k2], price: levels[k2] }))
       : [],

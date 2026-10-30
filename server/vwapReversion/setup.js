@@ -17,14 +17,16 @@ export const STATE_RANK = { triggered: 6, armed: 5, stretched: 4, fired: 3, stal
 export function bandSeries(ctx, minBars, from = 0) {
   const i = ctx.i;
   const n = i + 1;
+  ctx.bar(i); // lookahead guard: nothing past i is read below
+  const cs = ctx.sd.candles;
+  const vb = ctx.sd.get("vwapBands", 1);
   const bars = new Array(n);
   const vwap = new Array(n).fill(null);
   const sigma = new Array(n).fill(null);
   for (let k = Math.max(0, from); k <= i; k++) {
-    bars[k] = ctx.bar(k);
-    const b = ctx.ind("vwapBands", [1], i - k);
-    vwap[k] = b.vwap;
-    sigma[k] = b.upper == null || k + 1 < minBars ? null : b.upper - b.vwap;
+    bars[k] = cs[k];
+    vwap[k] = vb.vwap[k];
+    sigma[k] = vb.upper[k] == null || k + 1 < minBars ? null : vb.upper[k] - vb.vwap[k];
   }
   return { bars, vwap, sigma };
 }

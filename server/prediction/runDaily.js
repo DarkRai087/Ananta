@@ -4,8 +4,9 @@
 import { PREDICTION } from "../config/prediction.js";
 import { DAILY_MODELS } from "./models/index.js";
 import { callOf, summarize, ensembleScore, CALL_NAME } from "./evaluate.js";
+import { lru } from "../lru.js";
 
-const cache = new Map(); // test results by symbol|last complete bar|count
+const cache = lru({ max: 100 }); // test results by symbol|last complete bar|count
 
 const paramsOf = (m) => ({ ...m.params, ...(PREDICTION.models[m.id] || {}) });
 const weightsFor = (hid) => PREDICTION.ensemble.daily[hid] || {};
@@ -86,10 +87,7 @@ export function runDaily(bars, { partial = false, key = null, index = null } = {
     // The test never sees an index bar later than the share's last complete bar either.
     const idxDone = index && done.length ? { ...index, bars: index.bars.filter((b) => b.time <= done[done.length - 1].time) } : null;
     test = evaluate(done, models, cfg, alignIndex(done, idxDone));
-    if (ck) {
-      cache.set(ck, test);
-      if (cache.size > 100) cache.delete(cache.keys().next().value);
-    }
+    if (ck) cache.set(ck, test);
   }
 
   const live = predictAll(bars, bars.length - 1, models, alignIndex(bars, index));

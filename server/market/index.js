@@ -15,9 +15,10 @@ import { loadSessions } from "../backtest/run.js";
 import { istNow, istDate } from "../lab/time.js";
 import { dailyRelation, intradayRelation } from "./relation.js";
 import { indexState } from "./indexLink.js";
+import { lru } from "../lru.js";
 
 const RELATION_SESSIONS = 60;
-const cache = new Map(); // relation stats per symbol|index|interval|date (they change once a day)
+const cache = lru({ max: 300 }); // relation stats per symbol|index|interval|date (they change once a day)
 
 async function relationFor(symbol, id, interval, now) {
   const key = `${symbol}|${id}|${interval}|${now.date}`;
@@ -38,7 +39,6 @@ async function relationFor(symbol, id, interval, now) {
     out.errors.push(`intraday: ${err.message}`);
   }
   cache.set(key, out);
-  if (cache.size > 300) cache.delete(cache.keys().next().value);
   return out;
 }
 

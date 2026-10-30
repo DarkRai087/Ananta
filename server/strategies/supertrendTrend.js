@@ -3,6 +3,7 @@ import { watch, waiting, tf, px } from "./planKit.js";
 
 export default defineStrategy({
   id: "supertrend",
+  levels: ["supertrend"],
   name: "Supertrend Trend",
   description: "Enter when Supertrend (10,3, restarted each session) flips; stop at the Supertrend line; exit on the next flip or at 15:15.",
   params: { period: 10, mult: 3, exitOnFlip: true, entryEnd: "14:30", targetR: 0 },

@@ -3,6 +3,7 @@ import { watch, waiting, off, tf, px, orEnd } from "./planKit.js";
 
 export default defineStrategy({
   id: "narrowCpr",
+  levels: ["tc", "bc", "orHigh", "orLow", "vwap"],
   name: "Narrow CPR Trend Day",
   description: "Only on days with a narrow CPR, which often come before a trending day. After the opening range, a close above both the CPR top and the OR high, with price above VWAP → long (short: mirror). Stop at the tighter of the CPR bottom and the OR low.",
   params: { maxWidthPct: 0.25, orMinutes: 15, entryStart: "09:30", entryEnd: "13:00" },

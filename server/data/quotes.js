@@ -6,6 +6,7 @@ import { fetchQuotes } from "./providers/smartapi/quote.js";
 import { getToken, tickSize } from "./providers/smartapi/instruments.js";
 import { universeSymbols } from "./universes.js";
 import { VWAP_REVERSION } from "../config/vwapReversion.js";
+import { lru } from "../lru.js";
 
 const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
 const IST = 5.5 * 3600;
@@ -51,13 +52,13 @@ export function normalizeQuote(row, nowSec = Date.now() / 1000, maxAgeSec = VWAP
   };
 }
 
-const cache = new Map();
-async function cached(key, ttlMs, fn) {
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < ttlMs) return hit.value;
-  const value = await fn();
-  cache.set(key, { at: Date.now(), value });
-  return value;
+// One request per key per TTL, shared by everyone asking meanwhile; a failed one isn't kept.
+const caches = { 8000: lru({ max: 500, ttlMs: 8_000 }), 30000: lru({ max: 20, ttlMs: 30_000 }) };
+function cached(key, ttlMs, fn) {
+  const c = caches[ttlMs];
+  const p = c.use(key, fn);
+  p.catch(() => c.delete(key));
+  return p;
 }
 
 /** The stock's live FULL quote, normalized. { quote, error } — quote null when unavailable. */

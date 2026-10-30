@@ -6,7 +6,7 @@
 //   isConfigured() → boolean
 import YahooFinance from "yahoo-finance2";
 import { INDICES } from "../../config/indices.js";
-import { ProviderError, sleep, isNetworkError } from "./errors.js";
+import { ProviderError, sleep, isNetworkError } from "../../errors.js";
 import { aggregateMinutes } from "../../lab/sessions.js";
 
 export const id = "yahoo";

@@ -3,6 +3,7 @@ import { watch, waiting, off, tf, px, orEnd, dayRange, hasBars } from "./planKit
 
 export default defineStrategy({
   id: "openHighLow",
+  levels: ["open", "orHigh", "orLow", "vwap"],
   name: "Open = Low / Open = High",
   description: "The 09:15 open is still the day's low (within a tolerance) when the opening range completes, and price is above the open and VWAP → long. Open = high → short. Enter at range completion, or wait for a close beyond the range.",
   params: { orMinutes: 15, tolPct: 0.1, trigger: "orClose", stopBufferPct: 0.05, entryStart: "09:30", entryEnd: "10:30" },

@@ -1,23 +1,12 @@
 // Per-session indicator cache + the guarded context strategies see.
 import * as I from "./indicators.js";
 import { istMinute } from "./time.js";
+import { lru } from "../lru.js";
 
 // ── Indicator cache (per symbol / interval / session) ───────────────────────
-const MAX_ENTRIES = 50_000;
-const cache = new Map();
-
-function cached(key, compute) {
-  if (cache.has(key)) {
-    const v = cache.get(key);
-    cache.delete(key); // refresh LRU position
-    cache.set(key, v);
-    return v;
-  }
-  const v = compute();
-  cache.set(key, v);
-  if (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value);
-  return v;
-}
+// Bounded by the values held (~4M numbers), not the entry count: 1m sessions are 5× bigger.
+const cells = (v) => (Array.isArray(v) ? v.length : v && typeof v === "object" ? Object.values(v).reduce((n, x) => n + (Array.isArray(x) ? x.length : 1), 0) : 1);
+const cache = lru({ max: 4_000_000, cost: cells });
 
 export function clearIndicatorCache() {
   cache.clear();
@@ -54,16 +43,29 @@ export class SessionData {
     const n = this.candles.length;
     this.key = key ? `${key}|${n}|${n ? this.candles[n - 1].time : 0}` : null;
     this.local = new Map();
+    this.memos = new Map();
     this.minutes = this.candles.map((c) => istMinute(c.time));
     this.pivots = I.pivots(session.prev);
   }
 
   get(name, ...args) {
-    const sub = `${name}(${args.join(",")})`;
-    if (this.local.has(sub)) return this.local.get(sub);
+    return this.getA(name, args);
+  }
+
+  getA(name, args) {
+    const sub = args.length === 0 ? name : args.length === 1 ? `${name}(${args[0]})` : `${name}(${args.join(",")})`;
+    let v = this.local.get(sub);
+    if (v !== undefined) return v;
     const compute = () => COMPUTE[name](this.candles, this.intervalMin, ...args);
-    const v = this.key ? cached(`${this.key}|${sub}`, compute) : compute();
+    v = this.key ? cache.use(`${this.key}|${sub}`, compute) : compute();
     this.local.set(sub, v);
+    return v;
+  }
+
+  // A value computed once per session: only for series whose value at bar k uses bars ≤ k.
+  memo(key, fn) {
+    let v = this.memos.get(key);
+    if (v === undefined) this.memos.set(key, (v = fn()));
     return v;
   }
 }
@@ -117,6 +119,12 @@ export class BarContext {
     return k < 0 ? undefined : this.sd.candles[k];
   }
 
+  // Bars 0..i, as one copy.
+  bars() {
+    this._check(this.i);
+    return this.sd.candles.slice(0, this.i + 1);
+  }
+
   // IST minute-of-day of bar k.
   minute(k = this.i) {
     this._check(k);
@@ -131,7 +139,7 @@ export class BarContext {
     const k = this.i - ago;
     this._check(k);
     if (k < 0) return null;
-    const v = this.sd.get(name, ...args);
+    const v = this.sd.getA(name, args);
     if (Array.isArray(v)) return v[k];
     const out = {};
     for (const f of Object.keys(v)) out[f] = v[f][k];

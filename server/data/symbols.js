@@ -1,56 +1,17 @@
 // NSE symbol list: downloaded from NSE archives, stored in SQLite, searched for autocomplete.
 import db, { getMeta, setMeta } from "../db.js";
 import { INDICES as INDEX_CONFIG } from "../config/indices.js";
+import { fetchNseCsv } from "./nse.js";
 
 const NSE_EQUITY_CSV = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv";
 const REFRESH_DAYS = 7;
 
 export const INDICES = Object.entries(INDEX_CONFIG).map(([symbol, v]) => ({ symbol, name: v.name, type: "INDEX" }));
 
-// Minimal CSV line parser that handles quoted fields with commas.
-function parseCsvLine(line) {
-  const out = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (inQuotes) {
-      if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-      else if (c === '"') inQuotes = false;
-      else cur += c;
-    } else if (c === '"') inQuotes = true;
-    else if (c === ",") { out.push(cur.trim()); cur = ""; }
-    else cur += c;
-  }
-  out.push(cur.trim());
-  return out;
-}
-
 async function downloadEquityList() {
-  const res = await fetch(NSE_EQUITY_CSV, {
-    headers: {
-      // NSE rejects requests without a browser-like User-Agent.
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
-      Accept: "text/csv,*/*",
-    },
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) throw new Error(`NSE returned HTTP ${res.status}`);
-  const text = await res.text();
-
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  const header = parseCsvLine(lines.shift()).map((h) => h.toUpperCase());
-  const iSym = header.indexOf("SYMBOL");
-  const iName = header.indexOf("NAME OF COMPANY");
-  const iSeries = header.indexOf("SERIES");
-  const iIsin = header.indexOf("ISIN NUMBER");
-  if (iSym < 0 || iName < 0) throw new Error("Unexpected NSE CSV format");
-
-  return lines
-    .map(parseCsvLine)
-    .filter((f) => f[iSym])
-    .map((f) => ({ symbol: f[iSym], name: f[iName], series: f[iSeries] ?? null, isin: f[iIsin] ?? null }));
+  const rows = await fetchNseCsv(NSE_EQUITY_CSV);
+  if (!rows.length || !("SYMBOL" in rows[0]) || !("NAME OF COMPANY" in rows[0])) throw new Error("Unexpected NSE CSV format");
+  return rows.filter((r) => r.SYMBOL).map((r) => ({ symbol: r.SYMBOL, name: r["NAME OF COMPANY"], series: r.SERIES ?? null, isin: r["ISIN NUMBER"] ?? null }));
 }
 
 function upsertIndices() {

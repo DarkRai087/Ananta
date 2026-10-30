@@ -1,18 +1,8 @@
 // SmartAPI instrument master (symbol → token). Downloaded once per IST day, NSE cash only.
 import db, { getMeta, setMeta } from "../../../db.js";
 import { SMARTAPI } from "../../../config/smartapi.js";
-import { ProviderError, isNetworkError } from "../errors.js";
+import { ProviderError, isNetworkError } from "../../../errors.js";
 import { istNow } from "../../../lab/time.js";
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS smartapi_instruments (
-    symbol          TEXT PRIMARY KEY,   -- NSE symbol without suffix, e.g. RELIANCE
-    token           TEXT NOT NULL,
-    trading_symbol  TEXT,               -- e.g. RELIANCE-EQ
-    name            TEXT,
-    tick_size       REAL
-  );
-`);
 
 const META_KEY = "smartapi_instruments_date";
 let refreshing = null;

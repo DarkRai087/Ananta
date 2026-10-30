@@ -3,6 +3,7 @@ import { watch, waiting, off, tf, px } from "./planKit.js";
 
 export default defineStrategy({
   id: "vwapPullback",
+  levels: ["vwap"],
   name: "VWAP Pullback",
   description: "In a session trend (VWAP sloping, price holding one side), buy a dip that touches VWAP and closes back above it (short: mirror).",
   params: { slopeBars: 6, holdBars: 3, touchPct: 0.05, stopBufferPct: 0.05, entryStart: "09:45", entryEnd: "14:30" },

@@ -3,6 +3,7 @@ import { watch, waiting, off, tf, px, dayRange } from "./planKit.js";
 
 export default defineStrategy({
   id: "atrExhaustion",
+  levels: ["dayHigh", "dayLow", "vwap"],
   name: "ATR Exhaustion Fade",
   description: "Today's range has already used up its usual daily move (≥ 100% of the 14-day ATR). A fresh day high followed by a close below the previous bar's low → short back toward VWAP (mirror at the day low). Stop beyond the day's extreme.",
   params: { atrPct: 100, stopBufferPct: 0.05, entryStart: "11:30", entryEnd: "14:30", targetR: 0 },

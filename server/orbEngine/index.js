@@ -42,7 +42,7 @@ export function configFor(params = {}) {
 
 export const classify = (score, classes = ORB.classes) => classes.find((c) => score >= c.min) ?? classes[classes.length - 1];
 
-const bars = (ctx) => Array.from({ length: ctx.i + 1 }, (_, k) => ctx.bar(k));
+const bars = (ctx) => ctx.bars();
 
 /** Fast check for the backtest: does a breakout entry trigger on THIS bar? */
 export function triggersNow(ctx) {

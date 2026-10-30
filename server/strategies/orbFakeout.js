@@ -3,6 +3,7 @@ import { watch, armed, waiting, off, tf, px, orEnd, lastBar, barAtr } from "./pl
 
 export default defineStrategy({
   id: "orbFakeout",
+  levels: ["orHigh", "orLow"],
   name: "ORB Failed Breakout",
   description: "Price closes below the opening range low, then within a few bars closes back inside → long, as trapped sellers cover (short: mirror at the OR high). Stop beyond the false break; target the other side of the range.",
   params: { orMinutes: 15, maxBars: 4, stopBufferPct: 0.05, entryStart: "09:30", entryEnd: "13:00", targetR: 0 },

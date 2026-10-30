@@ -6,16 +6,15 @@ import { DecisionHeader } from "./decision/parts.jsx";
 import OrbBody from "./OrbReport.jsx";
 import VwapBody from "./VwapReport.jsx";
 
-// The dropdown under a scoreboard row. Strategies with a decision engine (ORB, VWAP σ-band
-// reversion) show their full live analysis for the chart symbol; the rest show their description,
-// today's plan and the backtest breakdown behind the row.
-const ENGINE = { orb: OrbBody, vwapBands: VwapBody };
-export const hasEngine = (id) => Boolean(ENGINE[id]);
+// The dropdown under a scoreboard row. Strategies with a decision engine show their full live
+// analysis for the chart symbol, in the view their report names (server: strategy.decision.report);
+// the rest show their description, today's plan and the backtest breakdown behind the row.
+const REPORT = { orb: OrbBody, vwap: VwapBody };
+export const hasEngine = (meta) => Boolean(REPORT[meta?.report]);
 
 const STATUS = { exit: "EXIT NOW", signal: "SIGNAL NOW", in_trade: "In trade", armed: "Armed", watching: "Watching", waiting: "Waiting", off: "Not today", done: "Done today" };
 
-function EngineDetail({ id, symbol, interval, account, onChartLevels }) {
-  const Body = ENGINE[id];
+function EngineDetail({ id, kind, symbol, interval, account, onChartLevels }) {
   const accountKey = JSON.stringify(account || {});
   const rep = useLiveData((signal) => fetchDecisionReport(id, symbol, interval, account, signal), `${id}|${symbol}|${interval}|${accountKey}`, { everyMs: 20_000 });
   const [onChart, setOnChart] = useState(false);
@@ -28,6 +27,7 @@ function EngineDetail({ id, symbol, interval, account, onChartLevels }) {
   if (rep.error) return <div className="small down">{rep.error}</div>;
   const r = rep.data;
   if (!r) return null;
+  const Body = REPORT[r.report] || REPORT[kind];
   return (
     <div className="sd">
       <div className="small muted">
@@ -124,6 +124,6 @@ function BasicDetail({ meta, m, plan }) {
 
 /** row: scoreboard row · m: its metrics · meta: { description, … } · plan: today's plan row for the chart symbol */
 export default function StrategyDetail({ row, m, meta, plan, symbol, interval, account, onChartLevels }) {
-  if (hasEngine(row.id)) return <EngineDetail id={row.id} symbol={symbol} interval={interval} account={account} onChartLevels={onChartLevels} />;
+  if (hasEngine(meta)) return <EngineDetail id={row.id} kind={meta.report} symbol={symbol} interval={interval} account={account} onChartLevels={onChartLevels} />;
   return <BasicDetail meta={meta} m={m} plan={plan} />;
 }

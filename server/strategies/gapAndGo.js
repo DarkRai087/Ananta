@@ -3,6 +3,7 @@ import { watch, waiting, off, tf, px, orEnd, hasBars } from "./planKit.js";
 
 export default defineStrategy({
   id: "gapAndGo",
+  levels: ["orHigh", "orLow", "pdc"],
   name: "Gap and Go",
   description: "Gap up ≥ threshold, then a close above the opening range high → long (gap down: mirror). Stop at the other side of the range.",
   params: { gapPct: 0.5, maxGapPct: 4, orMinutes: 15, entryStart: "09:30", entryEnd: "11:00" },

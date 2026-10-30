@@ -13,6 +13,7 @@ import { ensureUniverses, resolveTarget } from "../data/universes.js";
 import { ensureHolidays } from "../data/holidays.js";
 import { syncIntraday, labSource, cachedBounds } from "../data/intraday.js";
 import { isConfigured } from "../data/providers/smartapi/auth.js";
+import { asBulk } from "../priority.js";
 import { LAB } from "../config/lab.js";
 import { istEpoch, istDate } from "../lab/time.js";
 
@@ -100,7 +101,7 @@ async function main() {
   process.exitCode = failed && !ok ? 1 : 0; // let open sockets close (process.exit can crash libuv on Windows)
 }
 
-main().catch((err) => {
+asBulk(main).catch((err) => {
   console.error(err);
   process.exit(1);
 });

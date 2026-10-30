@@ -2,11 +2,13 @@ import "./env.js";
 import express from "express";
 import cors from "cors";
 import { ensureSymbolList, searchSymbols } from "./data/symbols.js";
-import { getCandles, AppError } from "./data/candles.js";
+import { AppError } from "./errors.js";
 import { ensureHolidays } from "./data/holidays.js";
 import { ensureUniverses } from "./data/universes.js";
 import { ensureIndexMembers } from "./data/indexMembers.js";
 import { labSource } from "./data/intraday.js";
+import { livePool } from "./workers/pool.js";
+import { symbolOf, listOf } from "./routes/validate.js";
 import labRoutes from "./routes/lab.js";
 import predictRoutes from "./routes/predict.js";
 import marketRoutes from "./routes/market.js";
@@ -24,19 +26,10 @@ app.get("/api/symbols", (req, res) => {
 
 // GET /api/candles/RELIANCE?interval=1d|1w|1mo|1h|15m|5m|3m|1m
 //   intraday intervals also accept overlays=vwap,ema,… patterns=engulfing,… orMinutes=15
-app.get("/api/candles/:symbol", async (req, res, next) => {
-  try {
-    const list = (v) => String(v || "").split(",").filter(Boolean);
-    res.json(
-      await getCandles(req.params.symbol, req.query.interval || "1d", {
-        overlays: list(req.query.overlays),
-        patterns: list(req.query.patterns),
-        orMinutes: Number(req.query.orMinutes) || 15,
-      })
-    );
-  } catch (err) {
-    next(err);
-  }
+app.get("/api/candles/:symbol", async (req, res) => {
+  const q = req.query;
+  const opts = { overlays: listOf(q.overlays), patterns: listOf(q.patterns), orMinutes: Number(q.orMinutes) || 15 };
+  res.json(await livePool.run("candles", { symbol: symbolOf(req.params.symbol), interval: String(q.interval || "1d"), opts }));
 });
 
 app.use("/api/lab", labRoutes);
@@ -45,12 +38,11 @@ app.use("/api/market", marketRoutes);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
+// AppError → its status; anything else with a status (e.g. bad JSON → 400) keeps it; the rest is 500.
 app.use((err, _req, res, _next) => {
-  if (err instanceof AppError || (err.status && err.code)) {
-    return res.status(err.status).json({ error: err.message, code: err.code });
-  }
-  console.error(err);
-  res.status(500).json({ error: err.message || "Internal error", code: "INTERNAL" });
+  const status = err instanceof AppError ? err.status : err.status || 500;
+  if (status >= 500) console.error(err);
+  res.status(status).json({ error: err.message || "Internal error", code: err.code || (status >= 500 ? "INTERNAL" : "BAD_REQUEST") });
 });
 
 // Bind to localhost only: nothing outside this machine can reach it.

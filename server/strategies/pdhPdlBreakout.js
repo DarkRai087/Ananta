@@ -3,6 +3,7 @@ import { watch, off, tf, px, barAtr } from "./planKit.js";
 
 export default defineStrategy({
   id: "pdhPdl",
+  levels: ["pdh", "pdl"],
   name: "Previous Day High/Low Breakout",
   description: "First intraday close above the previous day's high (long) or below its low (short). Stop at the breakout bar's other end.",
   params: { bufferPct: 0.05, entryStart: "09:20", entryEnd: "14:30" },

@@ -11,6 +11,7 @@ import TradePlans, { planLevels } from "../components/TradePlans.jsx";
 import { fetchCandles, fetchPlans, fetchPrediction, fetchIndexLink } from "../api.js";
 import { useToday, useLiveData } from "../hooks.js";
 import { fmtPrice, fmtTime, isMarketOpen, store } from "../format.js";
+import ErrorBoundary from "../components/ErrorBoundary.jsx";
 
 const INTERVALS = [
   { id: "1d", label: "1D" },
@@ -212,11 +213,17 @@ export default function TodayPage({ meta, symbol, setSymbol }) {
 
       <AccountBar account={account} onChange={setAccount} />
 
-      <MarketLink link={link.data} error={link.error} symbol={symbol} />
+      <ErrorBoundary name="The index link" resetKey={symbol}>
+        <MarketLink link={link.data} error={link.error} symbol={symbol} />
+      </ErrorBoundary>
 
-      <OutlookPanel pred={pred.data} loading={pred.loading} error={pred.error} symbol={symbol} />
+      <ErrorBoundary name="The outlook" resetKey={symbol}>
+        <OutlookPanel pred={pred.data} loading={pred.loading} error={pred.error} symbol={symbol} />
+      </ErrorBoundary>
 
-      <Top3Panel today={today} selectedId={selected?.id} onSelect={onSelectCard} controls={topControls} />
+      <ErrorBoundary name="Today's Top 3" resetKey={target}>
+        <Top3Panel today={today} selectedId={selected?.id} onSelect={onSelectCard} controls={topControls} />
+      </ErrorBoundary>
 
       <OverlayBar
         meta={meta}
@@ -242,21 +249,27 @@ export default function TodayPage({ meta, symbol, setSymbol }) {
       )}
 
       <main className="chart-wrap main-chart">
-        <Chart data={data} fitKey={data ? `${data.symbol}|${data.interval}` : null} overlays={isLab ? data?.overlays : null} markers={isLab ? markers : null} levels={levels} />
+        <ErrorBoundary name="The chart" resetKey={`${symbol}|${interval}`}>
+          <Chart data={data} fitKey={data ? `${data.symbol}|${data.interval}` : null} overlays={isLab ? data?.overlays : null} markers={isLab ? markers : null} levels={levels} />
+        </ErrorBoundary>
       </main>
 
-      <TradePlans
-        plans={plans.data}
-        loading={plans.loading}
-        error={plans.error}
-        stats={planStats}
-        statsLabel={today.result ? `Backtest (${today.result.targetName}, OOS)` : "Backtest"}
-        noEdge={Boolean(today.result?.noEdge)}
-        selectedId={selectedPlan?.id}
-        onSelect={onSelectPlan}
-      />
+      <ErrorBoundary name="The trade plans" resetKey={symbol}>
+        <TradePlans
+          plans={plans.data}
+          loading={plans.loading}
+          error={plans.error}
+          stats={planStats}
+          statsLabel={today.result ? `Backtest (${today.result.targetName}, OOS)` : "Backtest"}
+          noEdge={Boolean(today.result?.noEdge)}
+          selectedId={selectedPlan?.id}
+          onSelect={onSelectPlan}
+        />
+      </ErrorBoundary>
 
-      <Scoreboard result={today.result} symbol={symbol} account={account} metaStrategies={meta.strategies} plans={plans.data} onChartLevels={onDetailLevels} />
+      <ErrorBoundary name="The scoreboard" resetKey={target}>
+        <Scoreboard result={today.result} symbol={symbol} account={account} metaStrategies={meta.strategies} plans={plans.data} onChartLevels={onDetailLevels} />
+      </ErrorBoundary>
     </div>
   );
 }

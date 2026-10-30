@@ -1,6 +1,10 @@
 // Parameters every strategy has. Strategy files add their own on top.
 //
-// A strategy is { id, name, description, params, spec, warmup(params, intervalMin), onBar(ctx) }.
+// A strategy is { id, name, description, params, spec, warmup(params, intervalMin), onBar(ctx) },
+// plus, optionally: levels (today's level keys drawn when its Top 3 card is clicked, see
+// ranking/today.js LEVEL_LABELS), plan(ctx) (strategies/planKit.js) and decision (a decision
+// engine: { evaluate, configFor, build, vix, report }, where report names the client's
+// report view, e.g. "orb"). Everything about a strategy lives in its own file.
 // onBar runs at the CLOSE of bar ctx.i and returns:
 //   { side: "long" | "short", stop?, target?, reason }   to enter at the NEXT bar's open
 //   { exit: true, reason }                               to exit an open position at the next open

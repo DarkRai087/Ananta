@@ -15,7 +15,8 @@ export const settingsWithDefaults = (s = {}) => {
   const out = { ...LAB.backtest };
   for (const [k, v] of Object.entries(s || {})) {
     if (v === undefined || v === null || v === "") continue;
-    out[k] = typeof LAB.backtest[k] === "number" ? Number(v) : typeof LAB.backtest[k] === "boolean" ? v === true || v === "true" : v;
+    const d = LAB.backtest[k];
+    out[k] = typeof d === "number" ? (Number.isFinite(Number(v)) ? Number(v) : d) : typeof d === "boolean" ? v === true || v === "true" : v;
   }
   return out;
 };
@@ -33,17 +34,18 @@ export function loadSessions(symbol, interval, { from = null, to = null, lookbac
 
 /**
  * symbolSessions: [{ symbol, sessions }] — sessions to trade (already filtered to the range)
- * strategies: [{ id, params }]
- * returns { tradesByStrategy: { id: trades[] }, skipped, dates: sorted unique dates traded }
+ * strategies: [{ id, params, settings?, key? }] — settings: overrides for this entry only, key:
+ *   its result key (default id). One pass: every entry shares each session's indicators.
+ * returns { tradesByStrategy: { key: trades[] }, skipped, dates: sorted unique dates traded }
  */
 export function runStrategies(symbolSessions, strategies, { interval, settings, onProgress }) {
   const intervalMin = LAB.intervals[interval];
   const st = settingsWithDefaults(settings);
   const resolved = strategies.map((s) => {
     const def = getStrategy(s.id);
-    return { def, params: resolveParams(def, s.params) };
+    return { def, params: resolveParams(def, s.params), key: s.key ?? def.id, st: s.settings ? settingsWithDefaults({ ...settings, ...s.settings }) : st };
   });
-  const tradesByStrategy = Object.fromEntries(resolved.map((r) => [r.def.id, []]));
+  const tradesByStrategy = Object.fromEntries(resolved.map((r) => [r.key, []]));
   // Strategies that read the market (ctx.market) get NIFTY 50 + the sector index lined up.
   if (resolved.some((r) => r.def.needsMarket)) {
     for (const { symbol, sessions } of symbolSessions) if (sessions.length && !sessions[0].market) attachMarketFor(symbol, interval, sessions);
@@ -59,13 +61,13 @@ export function runStrategies(symbolSessions, strategies, { interval, settings, 
       if (s.special && !st.includeSpecialSessions) continue;
       dates.add(s.date);
       const sd = new SessionData(s, intervalMin, `${symbol}|${interval}|${s.date}`);
-      for (const { def, params } of resolved) {
-        const r = runSession({ session: s, symbol, strategy: def, params, settings: st, intervalMin, sd });
+      for (const r0 of resolved) {
+        const r = runSession({ session: s, symbol, strategy: r0.def, params: r0.params, settings: r0.st, intervalMin, sd });
         skipped += r.skipped;
         for (const t of r.trades) {
           t.ctx = s.context?.key ?? null;
           t.ctxParts = s.context?.parts ?? null;
-          tradesByStrategy[def.id].push(t);
+          tradesByStrategy[r0.key].push(t);
         }
       }
       if (onProgress && done % 20 === 0) onProgress(done, total);

@@ -11,8 +11,14 @@ export const hhmmToMin = (s) => {
 export const minToHHMM = (m) =>
   `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
-// "YYYY-MM-DD" of the IST calendar day.
-export const istDate = (t) => new Date((t + OFF) * 1000).toISOString().slice(0, 10);
+// "YYYY-MM-DD" of the IST calendar day. Runs once per candle, so each day's string is kept.
+const DAYS = new Map();
+export const istDate = (t) => {
+  const d = Math.floor((t + OFF) / 86400);
+  let s = DAYS.get(d);
+  if (s === undefined) DAYS.set(d, (s = new Date(d * 86400_000).toISOString().slice(0, 10)));
+  return s;
+};
 
 // Minutes since IST midnight.
 export const istMinute = (t) => Math.floor((((t + OFF) % 86400) + 86400) % 86400 / 60);

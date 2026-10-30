@@ -1,11 +1,10 @@
-// Candle cache: reads from SQLite, tops up only the missing candles from the provider,
-// falls back to cache when offline, and builds 1W / 1M bars from daily data.
-// Intraday lab intervals (15m / 5m / 3m / 1m) are served from the lab store instead.
-import db from "../db.js";
-import * as provider from "./providers/yahoo.js";
-import { ProviderError } from "./providers/errors.js";
+// Chart candles: Yahoo daily bars (built up to 1W / 1M) and hourly bars, and the lab's intraday
+// bars with overlays. All of them live in the one candle store (data/intraday.js), which tops
+// up only what is missing and falls back to the cache when offline.
+import { chartProvider as provider } from "./provider.js";
+import { AppError } from "../errors.js";
 import { getSymbol } from "./symbols.js";
-import { syncIntraday, loadIntraday, sessionsBack, labSource, DataError } from "./intraday.js";
+import { syncCandles, syncIntraday, loadCandles, loadIntraday, sessionsBack, labSource } from "./intraday.js";
 import { buildSessions } from "../lab/sessions.js";
 import { computeOverlays, patternMarkers } from "../lab/overlays.js";
 import { LAB } from "../config/lab.js";
@@ -19,88 +18,15 @@ export const UI_INTERVALS = {
 };
 export const LAB_UI_INTERVALS = ["15m", "5m", "3m", "1m"];
 
-// Don't ask the provider again if we asked this recently.
-const FRESH_MS = { "1d": 10 * 60_000, "1h": 2 * 60_000 };
+// Don't ask Yahoo again if we asked this recently (seconds). Daily history is kept from 1990.
+const TTL_SEC = { "1d": 600, "1h": 120 };
+const FULL_HISTORY = Date.parse("1990-01-01T00:00:00Z") / 1000;
 
 const IST_OFFSET_SEC = 5.5 * 3600;
 
-const stmts = {
-  lastTime: db.prepare("SELECT MAX(time) AS t FROM candles WHERE symbol = ? AND interval = ?"),
-  count: db.prepare("SELECT COUNT(*) AS n FROM candles WHERE symbol = ? AND interval = ?"),
-  select: db.prepare(
-    "SELECT time, open, high, low, close, volume FROM candles WHERE symbol = ? AND interval = ? ORDER BY time"
-  ),
-  upsert: db.prepare(
-    `INSERT OR REPLACE INTO candles (symbol, interval, time, open, high, low, close, volume)
-     VALUES (@symbol, @interval, @time, @open, @high, @low, @close, @volume)`
-  ),
-  getFetched: db.prepare("SELECT fetched_at FROM fetch_log WHERE symbol = ? AND interval = ?"),
-  setFetched: db.prepare("INSERT OR REPLACE INTO fetch_log (symbol, interval, fetched_at) VALUES (?, ?, ?)"),
-};
-
-export class AppError extends Error {
-  constructor(status, code, message) {
-    super(message);
-    this.status = status;
-    this.code = code;
-  }
-}
-
-const inFlight = new Map();
-
-/**
- * Bring the cache for symbol+interval up to date.
- * Returns { added, warning } — warning is set when we had to fall back to cached data.
- */
-export async function refreshCandles(symbol, interval, { force = false } = {}) {
-  const key = `${symbol}|${interval}`;
-  if (inFlight.has(key)) return inFlight.get(key);
-  const p = doRefresh(symbol, interval, force).finally(() => inFlight.delete(key));
-  inFlight.set(key, p);
-  return p;
-}
-
-async function doRefresh(symbol, interval, force) {
-  const last = stmts.lastTime.get(symbol, interval)?.t ?? null;
-  const fetchedAt = stmts.getFetched.get(symbol, interval)?.fetched_at ?? 0;
-  if (!force && last != null && Date.now() - fetchedAt < FRESH_MS[interval]) {
-    return { added: 0, warning: null };
-  }
-
-  // Re-fetch from the last stored candle (inclusive) so a partial "today" candle gets updated.
-  const from = last != null ? new Date(last * 1000) : null;
-
-  try {
-    const candles = await provider.fetchCandles(symbol, interval, { from });
-    db.transaction(() => {
-      for (const c of candles) stmts.upsert.run({ symbol, interval, ...c });
-      stmts.setFetched.run(symbol, interval, Date.now());
-    })();
-    if (last == null && candles.length === 0) {
-      throw new AppError(404, "NOT_FOUND", `No data found for ${symbol}`);
-    }
-    return { added: candles.filter((c) => last == null || c.time > last).length, warning: null };
-  } catch (err) {
-    if (err instanceof AppError) throw err;
-    const code = err instanceof ProviderError ? err.code : "UNKNOWN";
-    const hasCache = last != null;
-
-    if (code === "NOT_FOUND") {
-      if (hasCache) return { added: 0, warning: null }; // nothing new in that range
-      throw new AppError(404, "NOT_FOUND", `Symbol "${symbol}" not found on ${provider.name}`);
-    }
-    if (code === "NETWORK") {
-      if (hasCache) return { added: 0, warning: "Offline — showing cached data" };
-      throw new AppError(503, "NETWORK", `No internet connection and no cached data for ${symbol}`);
-    }
-    if (code === "RATE_LIMIT") {
-      if (hasCache) return { added: 0, warning: "Yahoo rate limit — showing cached data" };
-      throw new AppError(429, "RATE_LIMIT", "Yahoo is rate limiting requests. Wait a minute and try again.");
-    }
-    if (hasCache) return { added: 0, warning: `Update failed (${err.message}) — showing cached data` };
-    throw new AppError(502, "PROVIDER_ERROR", err.message);
-  }
-}
+/** Bring Yahoo's symbol + interval up to date. Returns { added, warning } (warning = cached data shown). */
+export const refreshCandles = (symbol, interval, { force = false } = {}) =>
+  syncCandles(provider, symbol, interval, { fromSec: FULL_HISTORY, ttlSec: TTL_SEC[interval], force });
 
 // ── Aggregation ─────────────────────────────────────────────────────────────
 
@@ -166,7 +92,7 @@ export async function getCandles(rawSymbol, uiInterval = "1d", opts = {}) {
 
   const { warning } = await refreshCandles(symbol, base);
 
-  const rows = stmts.select.all(symbol, base);
+  const rows = loadCandles(provider.id, symbol, base);
   if (!rows.length) throw new AppError(404, "NOT_FOUND", `No data found for ${symbol}`);
 
   const candles = base === uiInterval ? rows : aggregate(rows, uiInterval);
@@ -202,7 +128,7 @@ export async function getDailyBars(rawSymbol) {
   const symbol = String(rawSymbol || "").trim().toUpperCase();
   if (!symbol) throw new AppError(400, "BAD_REQUEST", "Symbol is required");
   const { warning } = await refreshCandles(symbol, "1d");
-  return { symbol, rows: stmts.select.all(symbol, "1d"), warning };
+  return { symbol, rows: loadCandles(provider.id, symbol, "1d"), warning };
 }
 
 // ── Intraday (lab store) ────────────────────────────────────────────────────
@@ -217,13 +143,7 @@ export async function getIntradayChart(symbol, interval, { overlays = [], patter
     throw new AppError(400, "BAD_INTERVAL", `${src.name} doesn't provide ${interval} candles`);
   }
   const nSessions = LAB.chartSessions[interval];
-  let warning = null;
-  try {
-    ({ warning } = await syncIntraday(symbol, interval, { fromSec: sessionsBack(nSessions) }));
-  } catch (err) {
-    if (err instanceof DataError) throw new AppError(err.status, err.code, err.message);
-    throw err;
-  }
+  const { warning } = await syncIntraday(symbol, interval, { fromSec: sessionsBack(nSessions) });
 
   // One extra session in front so the first shown day still has prior-day levels.
   const all = buildSessions(loadIntraday(symbol, interval, { fromSec: sessionsBack(nSessions + 2) }));

@@ -68,21 +68,28 @@ export function orStats(ctx, minutes, cfg) {
 export function makeRvol(ctx, cfg) {
   const V = cfg.volume;
   const need = cfg.range.minProfile;
-  const memo = new Map();
+  const sd = ctx.sd;
+  // Once per session: bar k's value uses only bars ≤ k, and earlier sessions' profiles.
+  const memo = sd.memo(`rvol|${need}|${V.fallbackBars}`, () => new Map());
+  const tod = sd.memo(`todVol|${need}`, () => new Map()); // minute → { expected, n } | null
   return (k) => {
+    ctx.bar(k); // lookahead guard
     if (memo.has(k)) return memo.get(k);
-    const bar = ctx.bar(k);
+    const bar = sd.candles[k];
     let out = null;
     if (bar && bar.volume > 0) {
-      const m = ctx.minute(k);
-      const vals = ctx.ref.profile.map((p) => p.vol?.[m]).filter((v) => v != null && v > 0);
-      if (vals.length >= need) {
-        const expected = mean(vals);
-        out = { value: bar.volume / expected, expected, source: "time-of-day", n: vals.length };
+      const m = sd.minutes[k];
+      let t = tod.get(m);
+      if (t === undefined) {
+        const vals = ctx.ref.profile.map((p) => p.vol?.[m]).filter((v) => v != null && v > 0);
+        tod.set(m, (t = vals.length >= need ? { expected: mean(vals), n: vals.length } : null));
+      }
+      if (t) {
+        out = { value: bar.volume / t.expected, expected: t.expected, source: "time-of-day", n: t.n };
       } else {
         const from = Math.max(0, k - V.fallbackBars);
         const prev = [];
-        for (let j = from; j < k; j++) prev.push(ctx.bar(j).volume || 0);
+        for (let j = from; j < k; j++) prev.push(sd.candles[j].volume || 0);
         const avg = mean(prev.filter((v) => v > 0));
         if (prev.length >= 3 && avg > 0) out = { value: bar.volume / avg, expected: avg, source: "session", n: prev.length };
       }

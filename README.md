@@ -40,7 +40,7 @@ How it works:
 - **Login:** the server generates the TOTP with `otplib` and logs in on demand. The session is cached in SQLite and shared by the server, the backfill script and worker threads.
 - **Expiry:** sessions expire at midnight IST, so a new day triggers a new login. An expired or invalid token is refreshed with the refresh token, falling back to a fresh login.
 - **Instruments:** symbols are mapped to SmartAPI tokens using Angel's instrument master JSON, cached in SQLite and re-downloaded once per day.
-- **Limits:** all limits are in `server/config/smartapi.js`, copied from the official docs. History requests are split into chunks of at most 30 / 60 / 100 / 200 days for 1m / 3m / 5m / 15m. A queue keeps candle requests under 2/sec, 80/min and 5000/hour. A rate-limit reply (HTTP 403 "exceeding access rate") is retried with backoff: 2s, 4s, 8s, 16s, 32s.
+- **Limits:** all limits are in `server/config/smartapi.js`, copied from the official docs. History requests are split into chunks of at most 30 / 60 / 100 / 200 days for 1m / 3m / 5m / 15m. A queue keeps candle requests under 2/sec, 80/min and 5000/hour. The request times are kept in SQLite, so the server, the backfill script and the worker threads share that one budget (Angel counts per account). Interactive requests (chart, plans, reports) go first; bulk work (a job's data sync, the backfill) waits for free slots and leaves 15 requests a minute for them. A rate-limit reply (HTTP 403 "exceeding access rate") is retried with backoff: 2s, 4s, 8s, 16s, 32s.
 - **Credentials:** `server/.env` is git-ignored. Never commit or share it.
 
 ### Backfill intraday history
@@ -292,21 +292,35 @@ There are 278 Vitest tests:
 - **Session-leak test:** two histories have completely different previous-day candles but the same previous-day high/low/close. Every pattern, indicator, signal and trade on the next day must be identical.
 - **VWAP σ-reversion and ORB engines:** setup states and entry models, failed / chased / wick-only breakouts, levels and sizing, missing data scoring 0, every mandatory condition, the decision, and the reports.
 
+## How the server is built
+
+- **Threads.** The main thread only answers HTTP. CPU work runs on persistent worker threads (`server/workers/`): the *jobs* pool (2 workers) runs backtests, pattern stats and the Top 3; the *live* worker runs each chart, plan, decision report and outlook request. A long job never delays a chart refresh, and workers keep their caches between tasks.
+- **Top 3 cost.** The window backtest ends yesterday, so it runs once per day per request shape and stays cached on its worker (the same target always goes to the same worker). The 5-minute refreshes only redo today's context: NIFTY 50 on 5m takes ~25 s the first time and ~2 s after that.
+- **Jobs.** At most 2 compute at once; the rest wait their turn. A job nobody has polled for 90 s stops at its next progress report.
+- **Caches.** Every in-memory cache is an `lru` (`server/lru.js`) with an explicit bound; the big ones (indicators, index sessions) are bounded by how much data they hold, not by entry count.
+- **Database.** `server/db.js` owns the whole schema. A change is a new migration at the end of its list (`PRAGMA user_version` counts the ones a database has run). One `candles` table holds every candle (lab intraday and the chart's Yahoo 1d / 1h), tagged by source.
+- **Errors and inputs.** One error type (`server/errors.js`, `AppError` with an HTTP status). Routes check symbols, intervals and dates (`routes/validate.js`) and answer 400 instead of computing on bad input.
+- **Client.** Market hours and holidays come from `/api/lab/meta`. Each panel sits in an error boundary, so one failing panel shows its error and a Retry button instead of blanking the page.
+
 ## Project layout
 
 ```
 server/
   index.js                 Express API (localhost only)
   env.js                   loads server/.env
-  db.js                    SQLite (server/cache.db)
+  db.js                    SQLite (server/cache.db): the whole schema + migrations
+  errors.js                AppError / ProviderError (one error type with an HTTP status)
+  lru.js                   the bounded cache every in-memory cache uses
+  priority.js              interactive vs bulk SmartAPI requests
   config/                  market.js · smartapi.js · costs.js · patterns.js · lab.js · vwapReversion.js · orb.js · events.js
   data/
     provider.js            provider registry (same interface for every provider)
     providers/yahoo.js     Yahoo (daily chart + lab fallback)
     providers/smartapi/    auth (TOTP login/refresh) · client (rate-limited queue) · instruments · quote · index
     quotes.js              live quote (bid/ask/depth/circuits) + NIFTY 50 breadth, for the VWAP report
-    intraday.js            lab candle store: chunked, resumable sync, 09:15–15:30 only
+    intraday.js            the candle store (lab + chart): chunked, resumable sync per source
     candles.js             chart API (Phase 1 + intraday chart with overlays/markers)
+    nse.js                 NSE downloads (User-Agent, CSV)
     holidays.js            NSE holidays (+ Muhurat detection)
     universes.js           NIFTY 50 / NIFTY 100 (from NSE) + watchlist
     symbols.js             NSE equity list (Phase 1)
@@ -317,20 +331,22 @@ server/
   vwapReversion/           VWAP σ engine: setup · factors/ · levels · report
   orbEngine/               ORB engine: setup (models A/B/C) · factors/ · levels · report
   market/                  indexLink · relation · marketContext (index bars lined up) · marketData (loader)
-  backtest/                engine · costs · metrics · run (walk-forward) · worker · jobs
-  ranking/today.js         Top 3 + scoreboard
-  routes/lab.js            /api/lab/*
+  backtest/                engine · costs · metrics · run (walk-forward) · account · jobs
+  workers/                 pool (jobs + live worker threads) · worker (thread entry) · tasks (what they run)
+  ranking/today.js         Top 3 + scoreboard (window backtest cached for the day)
+  prediction/              bullish / bearish outlook: models/ · features · evaluate · runDaily · runIntraday
+  routes/                  lab.js (/api/lab/*) · predict.js · market.js · validate.js (input checks)
   scripts/                 backfill.js · fetch-all.js · strategyResearch.js
   tests/                   Vitest
 client/src/
   pages/TodayPage.jsx      Top 3 · chart · scoreboard
   pages/LabPage.jsx        lab form, results, day picker
-  components/              Chart · Top3Panel · Scoreboard (+ StrategyDetail dropdown) · OrbReport · VwapReport · decision/parts · …
+  components/              Chart · Top3Panel · Scoreboard (+ StrategyDetail dropdown) · OrbReport · VwapReport · decision/parts · ErrorBoundary · …
 ```
 
 ### Adding a strategy or pattern
 
-- **Strategy:** add a file in `server/strategies/` using `defineStrategy({ id, name, params, spec, warmup, onBar })` and register it in `strategies/index.js`. `onBar(ctx)` sees only `ctx.bar(k ≤ i)`, `ctx.ind(name, args, ago)`, `ctx.openingRange(min)`, `ctx.ref` (PDH/PDL/PDC/gap, `daily`, `atrDaily`) and `ctx.pivots`. Don't keep state between bars (`ctx.state`): recompute from bars 0..i so the truncation test can check it. The lookahead and session-leak tests cover new strategies automatically. A strategy that reads the market sets `needsMarket: true` and uses `ctx.market("nifty" | "sector", ago)`. A strategy too strict to fire on random test data can set `testParams`, which the guard tests apply on top of its defaults.
+- **Strategy:** add a file in `server/strategies/` using `defineStrategy({ id, name, params, spec, warmup, onBar })` and register it in `strategies/index.js`. `onBar(ctx)` sees only `ctx.bar(k ≤ i)`, `ctx.ind(name, args, ago)`, `ctx.openingRange(min)`, `ctx.ref` (PDH/PDL/PDC/gap, `daily`, `atrDaily`) and `ctx.pivots`. Don't keep state between bars (`ctx.state`): recompute from bars 0..i so the truncation test can check it. A series whose value at bar k uses only bars ≤ k can be built once per session with `ctx.sd.memo(key, fn)` (see `decision/atr.js`) instead of on every bar. Everything else about the strategy goes in the same file: `levels` (today's levels its Top 3 card draws, keys from `LEVEL_LABELS` in `ranking/today.js`), an optional `plan(ctx)`, and for a decision engine `decision: { evaluate, configFor, build, vix, report }`, where `report` names the client view (`orb` or `vwap`). No other file needs editing. The lookahead and session-leak tests cover new strategies automatically. A strategy that reads the market sets `needsMarket: true` and uses `ctx.market("nifty" | "sector", ago)`. A strategy too strict to fire on random test data can set `testParams`, which the guard tests apply on top of its defaults.
 - **Pattern:** add `detectors/<name>.js` exporting `id`, `names` and `detect(sessionCandles, i)`, put its thresholds in `config/patterns.js`, and register it in `patterns/index.js`.
 
 ## Phase 1 commands (still available)

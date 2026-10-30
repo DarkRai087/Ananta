@@ -3,16 +3,8 @@
 import db, { getMeta, setMeta } from "../db.js";
 import { MARKET } from "../config/market.js";
 import { registerSpecialDate } from "../lab/sessions.js";
+import { NSE_UA as UA } from "./nse.js";
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS holidays (
-    date        TEXT PRIMARY KEY,   -- YYYY-MM-DD
-    description TEXT,
-    special     INTEGER NOT NULL DEFAULT 0
-  );
-`);
-
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 const MONTHS = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
 
 function toIso(d) {
@@ -62,6 +54,9 @@ export async function ensureHolidays() {
   }
   loadHolidays();
 }
+
+// Regular holidays (no session), oldest first.
+export const holidayDates = () => db.prepare("SELECT date FROM holidays WHERE special = 0 ORDER BY date").all().map((r) => r.date);
 
 export function isHoliday(date) {
   return Boolean(db.prepare("SELECT 1 FROM holidays WHERE date = ? AND special = 0").get(date));

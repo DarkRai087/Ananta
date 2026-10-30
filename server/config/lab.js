@@ -1,4 +1,5 @@
 // Lab defaults. Everything here can be overridden per run from the UI.
+import { MARKET } from "./market.js";
 export const LAB = {
   intervals: { "1m": 1, "3m": 3, "5m": 5, "15m": 15 },
   defaultInterval: "5m",
@@ -11,8 +12,8 @@ export const LAB = {
     maxPositionValue: 500000, // ₹ cap on qty × price (MIS leverage sanity cap)
     profitTarget: 0, // ₹ net profit (after costs) to take on every trade; overrides strategy targets. 0 = off
     indexFilter: "off", // "off" | "sector" | "market": only buy when the stock's index is up, only sell when it's down
-    entryCutoff: "14:45",
-    squareOff: "15:15",
+    entryCutoff: MARKET.entryCutoff, // session times live in config/market.js
+    squareOff: MARKET.squareOff,
     includeSpecialSessions: false,
   },
 
