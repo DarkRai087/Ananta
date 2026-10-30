@@ -48,6 +48,13 @@ db.exec(`
     message    TEXT,
     updated_at INTEGER NOT NULL
   );
+
+  -- SmartAPI request times (unix ms) per rate limiter, shared by every process using this file.
+  CREATE TABLE IF NOT EXISTS rate_stamps (
+    name TEXT    NOT NULL,
+    t    INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS rate_stamps_name_t ON rate_stamps (name, t);
 `);
 
 export function getMeta(key) {

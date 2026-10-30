@@ -24,8 +24,12 @@ export default function App() {
         </button>
         <span className="spacer" />
         {meta && (
-          <span className={`badge ${meta.provider.id === "smartapi" ? "pos" : "warn"}`} title="Intraday data source">
-            {meta.provider.id === "smartapi" ? "SmartAPI" : "Yahoo fallback (add SmartAPI keys for full history)"}
+          <span className={`badge ${meta.provider.id === "smartapi" && meta.provider.smartapiConfigured ? "pos" : "warn"}`} title="Intraday data source">
+            {meta.provider.id !== "smartapi"
+              ? "Yahoo fallback (add SmartAPI keys for full history)"
+              : meta.provider.smartapiConfigured
+                ? "SmartAPI"
+                : "SmartAPI keys missing — cached data only"}
           </span>
         )}
         <span className="small muted">Research only · no orders</span>

@@ -5,10 +5,10 @@
 //  • Older history ([from, first cached)) is fetched newest-chunk-first, so an interruption
 //    still leaves one contiguous block; it's marked done only when the whole range finishes.
 //  • New candles ([last cached, now]) are fetched oldest-first and saved chunk by chunk.
-//  • Only 09:15–15:30 candles (or a special session's window) are stored.
+//  • Candles are stored as received. Reads (buildSessions) keep only 09:15–15:30 or a special
+//    session's window, so a special date learned late still finds its candles.
 import db from "../db.js";
 import { labProvider, ProviderError } from "./provider.js";
-import { isSessionCandle } from "../lab/sessions.js";
 import { LAB } from "../config/lab.js";
 
 db.exec(`
@@ -60,7 +60,7 @@ export function labSource() {
 
 function save(source, symbol, interval, rows) {
   db.transaction(() => {
-    for (const r of rows) if (isSessionCandle(r.time)) q.upsert.run({ source, symbol, interval, ...r });
+    for (const r of rows) q.upsert.run({ source, symbol, interval, ...r });
   })();
 }
 
@@ -130,7 +130,7 @@ async function doSync(symbol, interval, { fromSec, force = false, onProgress } =
     const hasCache = q.bounds.get(src, symbol, interval).last != null;
     const code = err instanceof ProviderError ? err.code : "UNKNOWN";
     if (code === "NOT_FOUND" && !hasCache) throw new DataError(404, "NOT_FOUND", `${symbol}: ${err.message}`);
-    if (code === "NOT_CONFIGURED" || code === "AUTH") throw new DataError(401, code, err.message);
+    if (code === "AUTH" || (code === "NOT_CONFIGURED" && !hasCache)) throw new DataError(401, code, err.message);
     if (!hasCache) {
       if (code === "NETWORK") throw new DataError(503, "NETWORK", `No internet and no cached ${interval} data for ${symbol}`);
       if (code === "RATE_LIMIT") throw new DataError(429, "RATE_LIMIT", `${prov.name} is rate limiting requests. Try again in a minute.`);

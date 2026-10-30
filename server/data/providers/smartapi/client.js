@@ -1,20 +1,50 @@
 // Raw SmartAPI HTTP calls behind a rate-limited queue.
+import db from "../../../db.js";
 import { SMARTAPI } from "../../../config/smartapi.js";
 import { ProviderError, sleep, isNetworkError } from "../errors.js";
 
+const q = {
+  load: db.prepare("SELECT t FROM rate_stamps WHERE name = ? AND t > ? ORDER BY t"),
+  add: db.prepare("INSERT INTO rate_stamps (name, t) VALUES (?, ?)"),
+  trim: db.prepare("DELETE FROM rate_stamps WHERE name = ? AND t <= ?"),
+};
+
 // Sliding-window limiter: requests run one at a time, never exceed any window, and start at
-// least minGapMs apart.
+// least minGapMs apart. With a `shared` name the request times live in SQLite, so the server,
+// the backfill script and workers share one budget (Angel counts per account, not per process).
 export class RateLimiter {
-  constructor({ perSecond = Infinity, perMinute = Infinity, perHour = Infinity, minGapMs = 0 }, now = () => Date.now()) {
+  constructor({ perSecond = Infinity, perMinute = Infinity, perHour = Infinity, minGapMs = 0 }, now = () => Date.now(), shared = null) {
     this.minGapMs = minGapMs;
     this.windows = [
       [1000, perSecond],
       [60_000, perMinute],
       [3_600_000, perHour],
     ].filter(([, limit]) => Number.isFinite(limit));
+    this.span = Math.max(1000, ...this.windows.map(([span]) => span)); // oldest request that still matters
     this.stamps = [];
     this.chain = Promise.resolve();
     this.now = now;
+    this.shared = shared;
+  }
+
+  // 0 after recording a request now, else how long to wait. Shared: one write transaction, so
+  // two processes can't both take the last free slot.
+  take() {
+    if (!this.shared) {
+      const w = this.waitMs();
+      if (!w) this.stamps.push(this.now());
+      return w;
+    }
+    return db
+      .transaction(() => {
+        const old = this.now() - this.span;
+        q.trim.run(this.shared, old);
+        this.stamps = q.load.all(this.shared, old).map((r) => r.t);
+        const w = this.waitMs();
+        if (!w) q.add.run(this.shared, this.now());
+        return w;
+      })
+      .immediate();
   }
 
   // How long to wait before another request is allowed (0 = now).
@@ -32,8 +62,7 @@ export class RateLimiter {
 
   acquire() {
     const run = this.chain.then(async () => {
-      for (let w = this.waitMs(); w > 0; w = this.waitMs()) await sleep(w);
-      this.stamps.push(this.now());
+      for (let w = this.take(); w > 0; w = this.take()) await sleep(w);
     });
     this.chain = run.catch(() => {});
     return run;
@@ -42,10 +71,10 @@ export class RateLimiter {
 
 const { minGapMs, spareMinute } = SMARTAPI.candleSafety;
 const limiters = {
-  candles: new RateLimiter({ ...SMARTAPI.rateLimits.candles, perMinute: SMARTAPI.rateLimits.candles.perMinute - spareMinute, minGapMs }),
-  login: new RateLimiter(SMARTAPI.rateLimits.login),
-  refresh: new RateLimiter(SMARTAPI.rateLimits.refresh),
-  quote: new RateLimiter(SMARTAPI.rateLimits.quote),
+  candles: new RateLimiter({ ...SMARTAPI.rateLimits.candles, perMinute: SMARTAPI.rateLimits.candles.perMinute - spareMinute, minGapMs }, undefined, "candles"),
+  login: new RateLimiter(SMARTAPI.rateLimits.login, undefined, "login"),
+  refresh: new RateLimiter(SMARTAPI.rateLimits.refresh, undefined, "refresh"),
+  quote: new RateLimiter(SMARTAPI.rateLimits.quote, undefined, "quote"),
 };
 
 // From the SmartAPI error-code table. Token errors are fixed by refresh/re-login.

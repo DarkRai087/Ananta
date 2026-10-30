@@ -6,3 +6,4 @@ server/cache.db-shm
 server/.env
 .env
 *.log
+.claude/skills/**/*.md

@@ -22,9 +22,10 @@ export const settingsWithDefaults = (s = {}) => {
 
 // Sessions for a symbol with prior-day refs and contexts. `lookbackDays` of extra history
 // before `from` is loaded only for reference levels / ATR context (never traded).
-export function loadSessions(symbol, interval, { from = null, to = null, lookbackDays = 40 } = {}) {
+// doneBy (unix s): leave out candles still forming at that time.
+export function loadSessions(symbol, interval, { from = null, to = null, lookbackDays = 40, doneBy = null } = {}) {
   const fromSec = from ? istEpoch(from) - lookbackDays * 86400 : 0;
-  const toSec = to ? istEpoch(to, "23:59") : 4e9;
+  const toSec = Math.min(to ? istEpoch(to, "23:59") : 4e9, doneBy ? doneBy - LAB.intervals[interval] * 60 : 4e9);
   const sessions = buildSessions(loadIntraday(symbol, interval, { fromSec, toSec }));
   annotateContexts(sessions, LAB.intervals[interval]);
   return sessions;

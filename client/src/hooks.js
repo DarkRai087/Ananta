@@ -66,8 +66,11 @@ export function useToday(target, interval, oosSessions, ranking, account = null)
 
   useEffect(() => {
     setResult(null);
-    run();
-    return () => ctrlRef.current?.abort();
+    const t = setTimeout(run, 500); // one job per pause in typing, not one per keystroke
+    return () => {
+      clearTimeout(t);
+      ctrlRef.current?.abort();
+    };
   }, [run]);
 
   // Auto-refresh window.

@@ -14,6 +14,7 @@
 // are in server/.env, otherwise Yahoo (with Yahoo's short intraday history). Force one with
 // LAB_PROVIDER=smartapi|yahoo in .env.
 // ─────────────────────────────────────────────────────────────────────────────
+import db from "../db.js";
 import * as yahoo from "./providers/yahoo.js";
 import * as smartapi from "./providers/smartapi/index.js";
 
@@ -23,10 +24,15 @@ export const PROVIDERS = { yahoo, smartapi };
 
 export const chartProvider = yahoo;
 
+// Without SmartAPI keys, a database that already holds SmartAPI candles keeps reading them:
+// Yahoo rows are stored apart, so switching would hide all that history.
+let hasSmartapiRows = null;
 export function labProvider() {
   const want = (process.env.LAB_PROVIDER || "").toLowerCase();
   if (PROVIDERS[want]) return PROVIDERS[want];
-  return smartapi.isConfigured() ? smartapi : yahoo;
+  if (smartapi.isConfigured()) return smartapi;
+  hasSmartapiRows ??= Boolean(db.prepare("SELECT 1 FROM lab_candles WHERE source = 'smartapi' LIMIT 1").get());
+  return hasSmartapiRows ? smartapi : yahoo;
 }
 
 // Phase 1 interface (daily chart), unchanged.

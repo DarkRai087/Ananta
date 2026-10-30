@@ -96,7 +96,7 @@ export function computeToday({ target, interval = LAB.defaultInterval, oosSessio
   const allDates = new Set();
   const loadFrom = istDate(sessionsBack(window + LAB.context.atrDays + 5, now.t));
   for (const symbol of symbols) {
-    const sessions = loadSessions(symbol, interval, { from: loadFrom }).filter((s) => !s.special);
+    const sessions = loadSessions(symbol, interval, { from: loadFrom, doneBy: now.t }).filter((s) => !s.special);
     const today = sessions.find((s) => s.date === now.date) || null;
     const hist = sessions.filter((s) => s.date < now.date);
     hist.slice(-window).forEach((s) => allDates.add(s.date));
@@ -117,7 +117,8 @@ export function computeToday({ target, interval = LAB.defaultInterval, oosSessio
   if (readyCount > 0) {
     mode = now.minute >= freezeMin ? "frozen" : "live";
     label = mode === "frozen" ? `Frozen at ${LAB.ranking.freezeAt} — today's context` : "Today's context (opening range complete)";
-  } else if (anyToday) {
+  } else if (anyToday || (now.minute >= OPEN_MIN && now.minute < OPEN_MIN + intervalMin && isTradingDay(now.date))) {
+    // (the second case: the session has started but its first bar hasn't closed yet)
     mode = "waiting";
     label = `Waiting for the ${LAB.context.orMinutes}-minute opening range — ranking on recent performance`;
   } else {

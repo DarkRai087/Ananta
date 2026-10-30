@@ -43,9 +43,10 @@ export function loadHolidays() {
 }
 
 export async function ensureHolidays() {
+  loadHolidays(); // cached special dates now, not after the download
   const count = db.prepare("SELECT COUNT(*) AS n FROM holidays").get().n;
   const at = Number(getMeta("holidays_loaded_at") || 0);
-  if (count > 0 && Date.now() - at < 7 * 86400_000) return loadHolidays();
+  if (count > 0 && Date.now() - at < 7 * 86400_000) return;
   try {
     const rows = await download();
     const ins = db.prepare("INSERT OR REPLACE INTO holidays (date, description, special) VALUES (@date, @description, @special)");

@@ -12,6 +12,7 @@ import "../env.js";
 import { ensureUniverses, resolveTarget } from "../data/universes.js";
 import { ensureHolidays } from "../data/holidays.js";
 import { syncIntraday, labSource, cachedBounds } from "../data/intraday.js";
+import { isConfigured } from "../data/providers/smartapi/auth.js";
 import { LAB } from "../config/lab.js";
 import { istEpoch, istDate } from "../lab/time.js";
 
@@ -48,6 +49,10 @@ async function main() {
       console.error(`${src.name} doesn't provide ${iv}. Lab intervals: ${src.intervals.join(", ")}`);
       process.exit(1);
     }
+  }
+  if (src.id === "smartapi" && !isConfigured()) {
+    console.error("SmartAPI keys are missing in server/.env. Add them to backfill (cached SmartAPI candles stay readable).");
+    process.exit(1);
   }
   if (src.id !== "smartapi") {
     console.warn(`⚠ SmartAPI credentials not found in server/.env — using ${src.name}, which only keeps ~60 days of 5m/15m and ~7 days of 1m/3m.\n`);
