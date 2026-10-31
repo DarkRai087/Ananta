@@ -9,7 +9,8 @@
     "dev": "node --watch --watch-preserve-output index.js",
     "fetch-all": "node scripts/fetch-all.js",
     "backfill": "node scripts/backfill.js",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:timemachine",
+    "test:timemachine": "cd timemachine && node --test",
     "vwap-research": "node scripts/strategyResearch.js --strategy=vwapBands",
     "strategy-research": "node scripts/strategyResearch.js",
     "orb-research": "node scripts/strategyResearch.js --strategy=orb"

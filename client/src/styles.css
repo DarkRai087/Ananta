@@ -730,6 +730,13 @@ details summary {
 .metrics td:first-child {
   color: var(--muted);
 }
+.tm-verdict {
+  font-size: 1.15em;
+  font-weight: 600;
+}
+.tm-table {
+  max-width: 760px;
+}
 
 .equity {
   width: 100%;

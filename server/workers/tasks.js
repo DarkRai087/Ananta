@@ -9,9 +9,13 @@ import { computeToday } from "../ranking/today.js";
 import { getCandles } from "../data/candles.js";
 import { loadIntraday, syncIntraday, sessionsBack } from "../data/intraday.js";
 import { referenceIndex } from "../data/indexMembers.js";
-import { buildSessions } from "../lab/sessions.js";
+import { buildSessions, isSessionCandle } from "../lab/sessions.js";
 import { computeOverlays, patternMarkers } from "../lab/overlays.js";
-import { istEpoch } from "../lab/time.js";
+import { istEpoch, istDate, istHHMM } from "../lab/time.js";
+import { runTimeMachine } from "../timemachine/src/index.js";
+import { fromKite } from "../timemachine/src/kite.js";
+import { TimeMachineError } from "../timemachine/src/errors.js";
+import { slotOf } from "../timemachine/src/time.js";
 import { buildPlans } from "../plans/index.js";
 import { decisionReport, syncForReport } from "../decision/live.js";
 import { predict } from "../prediction/index.js";
@@ -89,6 +93,37 @@ export const TASKS = {
   async decision({ strategy, symbol, interval, account }) {
     const warnings = await syncForReport(symbol, interval);
     return { ...(await decisionReport({ strategy, symbol, interval, account })), warnings };
+  },
+
+  // Time Machine: a long plan (no stop and target = a price forecast) replayed from the stock's
+  // own last `sessions` 5m sessions before the plan date. Today's morning (completed bars before
+  // the entry time) and NIFTY 50 are loaded only for analog days or a forecast without an entry.
+  async timemachine({ symbol, plan, options, sessions, analog }) {
+    const before = istEpoch(plan.date);
+    const fromSec = sessionsBack(sessions + 10, before);
+    const needToday = analog || plan.entry == null;
+    const doneBy = needToday ? Math.min(before + 86399, Math.floor(Date.now() / 1000) - 300) : before - 1;
+    const warnings = new Set();
+    for (const s of analog ? [symbol, MARKET_INDEX] : [symbol])
+      await syncIntraday(s, "5m", { fromSec }).then((r) => r.warning && warnings.add(r.warning), (err) => warnings.add(err.message));
+    const warning = [...warnings].join("; ") || null;
+    const load = (s) =>
+      fromKite(
+        loadIntraday(s, "5m", { fromSec, toSec: doneBy })
+          .filter((c) => isSessionCandle(c.time))
+          .map((c) => ({ date: `${istDate(c.time)}T${istHHMM(c.time)}`, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume }))
+      );
+    try {
+      const mine = load(symbol);
+      const day = needToday && mine.find((s) => s.date === plan.date);
+      const today = day ? { date: plan.date, bars: day.bars.slice(0, slotOf(plan.entryTime)) } : undefined;
+      const index = analog ? load(MARKET_INDEX) : undefined;
+      const past = mine.filter((s) => s.date < plan.date).slice(-sessions);
+      return { ...runTimeMachine({ symbol, ...plan }, past, { ...options, today, index, conditioning: { enabled: analog } }), warning };
+    } catch (e) {
+      if (e instanceof TimeMachineError) throw new AppError(400, e.code, warning && e.code === "INSUFFICIENT_SESSIONS" ? `${e.message}. ${warning}` : e.message);
+      throw e;
+    }
   },
 
   predict: ({ symbol, interval }) => predict(symbol, { interval }),

@@ -26,3 +26,9 @@ export function dateOf(v, what = "date", { optional = false } = {}) {
 }
 
 export const listOf = (v) => String(v || "").split(",").filter(Boolean);
+
+// A whole number clamped to [min, max]; anything else keeps the default.
+export function intOf(v, def, min, max) {
+  const n = v === "" || v == null ? NaN : Number(v);
+  return Number.isInteger(n) ? Math.min(max, Math.max(min, n)) : def;
+}

@@ -24,7 +24,7 @@ import { lru } from "../lru.js";
 import * as smartapi from "../data/providers/smartapi/index.js";
 import { getJwt } from "../data/providers/smartapi/auth.js";
 import { ensureInstruments } from "../data/providers/smartapi/instruments.js";
-import { symbolOf, intervalOf, dateOf, listOf } from "./validate.js";
+import { symbolOf, intervalOf, dateOf, listOf, intOf } from "./validate.js";
 
 const router = Router();
 const bad = (msg) => new AppError(400, "BAD_REQUEST", msg);
@@ -102,6 +102,31 @@ const decisionRoute = (fixed) => async (req, res) => {
 };
 router.get("/decision-report", decisionRoute(null));
 router.get("/vwap-report", decisionRoute("vwapBands"));
+
+// Time Machine (server/timemachine/): Monte Carlo odds + ORB history for a long plan on 5m bars,
+// or a price forecast when stop and target are both blank; analog=true weights similar mornings.
+// The engine checks the plan and refuses with a code (400); only sizes are capped here.
+router.post("/timemachine", async (req, res) => {
+  const b = req.body || {};
+  const p = b.plan || {};
+  const price = (v) => (v === "" || v == null ? undefined : Number(v)); // blank = not given
+  res.json(
+    await livePool.run("timemachine", {
+      symbol: symbolOf(b.symbol),
+      plan: {
+        date: dateOf(p.date, "date", { optional: true }) ?? istNow().date,
+        entry: price(p.entry),
+        stop: price(p.stop),
+        target: price(p.target),
+        entryTime: String(p.entryTime ?? ""),
+        until: String(p.until || "15:15"),
+      },
+      options: { seed: intOf(b.seed, 19, 0, 2 ** 32 - 1), replays: intOf(b.replays, 10000, 100, 100_000), window: intOf(b.window, 2, 0, 12) },
+      sessions: intOf(b.sessions, 60, 20, 250),
+      analog: b.analog === true,
+    })
+  );
+});
 
 // Start a backtest or pattern-stats job.
 router.post("/jobs", (req, res) => {

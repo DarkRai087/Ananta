@@ -7,3 +7,4 @@ server/.env
 .env
 *.log
 .claude/skills/**/*.md
+CLAUDE.md

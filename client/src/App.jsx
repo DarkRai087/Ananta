@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import TodayPage from "./pages/TodayPage.jsx";
 import LabPage from "./pages/LabPage.jsx";
+import TimeMachinePage from "./pages/TimeMachinePage.jsx";
 import { useLabMeta } from "./hooks.js";
 import { store } from "./format.js";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -23,6 +24,9 @@ export default function App() {
         <button className={page === "lab" ? "active" : ""} onClick={() => setPage("lab")}>
           Lab
         </button>
+        <button className={page === "tm" ? "active" : ""} onClick={() => setPage("tm")}>
+          Time Machine
+        </button>
         <span className="spacer" />
         {meta && (
           <span className={`badge ${meta.provider.id === "smartapi" && meta.provider.smartapiConfigured ? "pos" : "warn"}`} title="Intraday data source">
@@ -40,6 +44,7 @@ export default function App() {
       <ErrorBoundary name="This page" resetKey={page}>
         {meta && page === "today" && <TodayPage meta={meta} symbol={symbol} setSymbol={setSymbol} />}
         {meta && page === "lab" && <LabPage meta={meta} symbol={symbol} setSymbol={setSymbol} />}
+        {meta && page === "tm" && <TimeMachinePage symbol={symbol} setSymbol={setSymbol} />}
       </ErrorBoundary>
     </div>
   );

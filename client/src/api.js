@@ -52,7 +52,8 @@ export const getJob = (id, signal) => request(`/api/lab/jobs/${id}`, { signal })
 export const startToday = (body) => request("/api/lab/today", { method: "POST", body });
 export const fetchPlans = (symbol, interval, account, signal) => request(`/api/lab/plans?${qs({ symbol, interval, ...(account || {}) })}`, { signal });
 export const fetchDecisionReport = (strategy, symbol, interval, account, signal) => request(`/api/lab/decision-report?${qs({ strategy, symbol, interval, ...(account || {}) })}`, { signal });
-export const fetchIndexLink = (symbol, interval, signal) => request(`/api/market/index-link/${encodeURIComponent(symbol)}?${qs({ interval })}`, { signal });
+export const runTimeMachine = (body, signal) => request("/api/lab/timemachine", { method: "POST", body, signal });
+export const fetchIndexLink =(symbol, interval, signal) => request(`/api/market/index-link/${encodeURIComponent(symbol)}?${qs({ interval })}`, { signal });
 export const fetchPrediction = (symbol, interval, signal) => request(`/api/predict/${encodeURIComponent(symbol)}?${qs({ interval })}`, { signal });
 
 // Polls a job until it finishes. onProgress(job) on every poll. Resolves with the job.

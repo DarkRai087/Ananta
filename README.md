@@ -134,6 +134,31 @@ Choose a symbol or universe, then the interval, date range, Strategy or Patterns
 - **Outcomes:** each trade is a **win** (net > 0), a **loss** (net ≤ 0) or **forced** (15:15 exit). The three add up to 100%.
 - **Walk-forward:** this is a fixed split (first 70% of dates vs last 30%), not parameter re-optimisation. A strategy that only makes money in the first part is flagged *Works in-sample only*.
 
+## VWAP Pullback (trend-day continuation)
+
+The `vwapPullback` strategy buys a dip to VWAP on a confirmed up-trend day (short: the mirror).
+The full hypothesis and rule set are in [`server/strategies/vwapPullback.md`](server/strategies/vwapPullback.md);
+every threshold is a param on the strategy and editable in the Lab. In short: VWAP must be
+sloping and uncrossed, price must have held one side, a low-volume pullback must touch VWAP, and
+the entry is the reclaim bar that closes above the prior high and back through VWAP. The stop is
+`min(pullback swing low, VWAP − 0.25·ATR)` on the NSE tick; target is 2R (or the VWAP ±σ band).
+
+**Run a backtest:** Lab page → pick *VWAP Pullback*, the NIFTY 50 symbols and **5m** (the only
+stored intraday interval), a date range, then run. It uses the shared engine, costs and sizing.
+
+**Read the result:** look at the **out-of-sample** column, not the headline. A win % is only
+meaningful next to its expectancy and trade count: the card shows win % with its Wilson 95%
+interval, expectancy in R and ₹ (net of costs), profit factor, max drawdown and the walk-forward
+flag. Judge it an edge only if the out-of-sample expectancy is positive with a profit factor
+above ~1.2 and enough trades (aim for ≥100) to trust the win %.
+
+> On the ~232 sessions of 5m history available locally (Nov 2025 → Oct 2026, 60 names), the
+> default params produce **no edge**: 134 trades, win 28%, expectancy −0.37R, profit factor 0.47,
+> negative both in- and out-of-sample (gross too, so it is not a cost problem). Out-of-sample has
+> only 38 trades — below the ≥100 bar — so the honest verdict is **no proven edge**. The filters
+> would need rethinking (or more history) before this is tradable; don't tune them on this whole
+> sample, which would just overfit. Results use today's NIFTY 50 list (survivorship caveat).
+
 ## VWAP σ-Band Reversion (eight-factor decision engine)
 
 The `vwapBands` strategy never trades a band touch on its own. On every bar, `server/vwapReversion/` analyses the setup, scores it, checks the mandatory conditions, and only then gives one decision: **LONG**, **SHORT**, **WATCHLIST** or **NO TRADE**. The backtest (`onBar`), the trade-plan row (`plan`) and the decision report all run this same code. Every number lives in `server/config/vwapReversion.js`.
@@ -275,6 +300,87 @@ On NIFTY 50, 5m, Nov 2025 – Oct 2026 (275 sessions):
 
 At the default 85 it doesn't trade in backtests. The weights are a starting point to research, not a proven edge.
 
+## Time Machine
+
+**Time Machine** tab (top bar, right of Lab). It opens on the symbol from the main screen, prefilled with ORB's long levels when there are any (otherwise the last price ± 0.5%), and re-runs 0.5 s after each edit. For a long plan (entry, stop, target, entry-bar close time, flat-by time) it replays the rest of the day 10,000 times from the stock's own 5-minute bars, and runs the ORB rule on the same past sessions. It reports target first / stop first / neither / green, the history, a verdict, and a price forecast at +30 min, +60 min and the flat-by time (stop and target left blank = forecast only). The engine is in `server/timemachine/` (pure, zero dependencies); the app calls it through `POST /api/lab/timemachine` on the live worker, using the last 60 cached 5m sessions before the plan date by default.
+
+Principles:
+
+1. **Odds, not predictions.** It asks how often this exact plan hits the target first, the stop first, or neither.
+   The output is a distribution, never a forecast.
+2. **The stock is its own model.** No normal distribution or volatility formula: it resamples the stock's real 5-minute bars.
+   Fat tails and quirks come along for free.
+3. **Time of day matters.** A bar is only replaced by a past bar from the same time of day, ± 2 slots by default.
+   The open, the lunch lull and the 15:00 rush keep their own behaviour.
+4. **Scale-free.** Past bars are stored as ratios to the previous close (slot 0: its own open).
+   A bar from ₹700 days replays correctly at ₹740.
+5. **Pessimistic when ambiguous.** A bar touching both stop and target is a stop.
+   A gap through the stop is booked at −1R and counted separately, because a real fill is worse.
+6. **No lookahead.** Only full sessions strictly before the plan date enter the pool.
+   Today's bars never do, and sessions on or after the plan date change nothing.
+7. **Two witnesses.** The simulation and the real history of the same rule are shown side by side.
+   When they disagree, that disagreement is information.
+8. **Judge against break-even, not 50%.** A 2R plan only needs to win 1 in 3.
+   Break-even target share = 1 / (1 + R) of the replays that hit something.
+9. **Reproducible.** Seeded mulberry32 PRNG, one stream per run.
+   Same data, plan and seed give byte-identical output.
+10. **Refuse rather than guess.** Too few sessions, a broken plan or an off-grid time is a refusal with a code.
+    `INSUFFICIENT_SESSIONS`, `INVALID_PLAN`, `ENTRY_NOT_ON_GRID`, `ENTRY_AFTER_UNTIL`, `INVALID_OPTIONS`, `TODAY_REQUIRED`, `BAD_TODAY`.
+11. **It informs, it never acts.** No orders, no position sizing, no rupee P&L.
+    Rounding is display-only.
+12. **Similar mornings, not all mornings.** Today's first hour picks which past days to learn from.
+    It never becomes a formula.
+13. **Only what was knowable.** Features read bars up to the decision moment only, and the pool is strictly earlier days.
+    Walk-forward enforces this for every single day.
+14. **A forecast is a distribution.** "54% up, 90% between ₹996 and ₹1,006", never "₹1,004".
+    Every horizon has odds, percentiles and move buckets.
+15. **Never too few witnesses.** If weights concentrate on fewer than `minEss` effective days, the bandwidth widens ×1.5.
+    After 10 widenings it falls back to uniform weights. Two lucky days never decide.
+16. **Prove it or drop it.** Analog days stay off unless they beat uniform in walk-forward.
+    Choose on the train period, judge on the test period, never choose by the test period.
+
+**Analog days (off by default; "Analog days" checkbox, `--analog`).** Each past session is described by its morning at the decision bar, standardized over the pool (population sd; a flat feature is dropped). A session's weight is `exp(−d² / 2h²)`, where d² is the weighted squared z-distance to today plus `eventWeight` (4) when its event tags differ. Weights only change which past bar a random number picks, never how many random numbers are drawn, so uniform weights reproduce the plain run exactly. `volScale` stretches each session's bars by today's rvol ÷ its rvol (kept within 0.5–2).
+
+| Feature | Definition (bars 0..e−1 only) | Dropped when |
+|---|---|---|
+| `relVol` | volume so far ÷ the pool's mean volume so far | any session lacks volume, or the mean is 0 |
+| `rvol` | √(mean of ln(close ÷ reference)²), reference = previous close (09:15 bar: its open) | never |
+| `gap` | ln(open ÷ previous valid session's 15:25-bar close), 0 if none | never |
+| `moveSoFar` | ln(last close ÷ 09:15 open) | never |
+| `niftyMove` | Nifty 50's ln(last close ÷ 09:15 open), same date | no index, or a date is missing |
+
+A new feature (open interest, delivery %) is one object `{ name, available, value }` in `server/timemachine/src/features/index.js`.
+
+**Price forecast.** Every run also reports, at +30 min, +60 min and the flat-by time: the chance the price is up or down, the mean, the 5/25/50/75/95th percentiles, and the share of replays in six move buckets (below −1%, −1 to −0.5%, −0.5 to 0, 0 to +0.5%, +0.5 to +1%, +1% or more). Leave stop and target empty for forecast-only mode; the entry then defaults to the close of the last bar before the entry time.
+
+Command line, on Kite candles (`["2026-10-19T09:15:00+0530", o, h, l, c, v]`) and a plan file. When `--analog` is on or the plan has no entry, today's morning is taken from `--data` (only the bars before the entry time):
+
+```bash
+cd server/timemachine
+node cli.js --data data/RELIANCE.json --plan plan.json [--seed 19] [--replays 10000] [--window 2] [--json]
+node cli.js --data data/RELIANCE.json --index data/NIFTY50.json --plan forecast.json --analog [--vol-scale] [--events events.json]
+node --test        # the engine's own tests (also run by npm test)
+```
+
+`forecast.json` is a plan without stop and target, e.g. `{ "symbol": "RELIANCE", "date": "2026-10-13", "entryTime": "10:15" }`. `events.json` tags days, e.g. `{ "2026-10-13": ["expiry"], "2026-10-08": ["rbi"] }`.
+
+**Walk-forward validation.** It forecasts each past day at the decision time from only the 20 sessions before it, scores P(up at the flat-by time) against what happened (Brier score, 90% band coverage, calibration), and compares uniform, analog and analog+vol. It picks the variant with the lowest train Brier. Analog is *accepted* only if that pick is not uniform and also beats uniform on the test period.
+
+```bash
+node cli.js walkforward --data data/RELIANCE.json [--index data/NIFTY50.json] [--events events.json] --train-end 2026-08-07 [--replays 2000] [--json]
+```
+
+Known limitations:
+
+- Sampling single bars breaks momentum and volatility clustering, so odds drift toward a coin flip.
+- 20 sessions is a thin sample.
+- Gap stops are booked at −1R but fill worse in reality.
+- Long only.
+- A session counts only with all 75 bars (09:15–15:25). Sessions missing their last bars are skipped, and the refusal says how many.
+- **Bands are too narrow on trending days.** On the planted-signal test (walk-forward fixture P), the 90% band holds the real close only 30–37% of the time, even with analog days. Sampling single bars mixes bars from different days and destroys within-day trend persistence, so bands come out too narrow and too centred. The goldens lock this behaviour on purpose; the next version's block bootstrap (runs of consecutive bars from one analog day) will be measured against it.
+- Market depth, open interest, delivery %, FII/DII flows and news are not in free 5-minute candles, so they are not features.
+- Walk-forward is command-line only.
+
 ## Tests
 
 ```bash
@@ -291,6 +397,8 @@ There are 278 Vitest tests:
 - **Lookahead test:** every strategy and pattern must decide identically with the future bars removed, and the context throws if anything reads past bar i. It includes two deliberately cheating strategies to prove the guard catches them.
 - **Session-leak test:** two histories have completely different previous-day candles but the same previous-day high/low/close. Every pattern, indicator, signal and trade on the next day must be identical.
 - **VWAP σ-reversion and ORB engines:** setup states and entry models, failed / chased / wick-only breakouts, levels and sizing, missing data scoring 0, every mandatory condition, the decision, and the reports.
+
+`npm test` then runs the Time Machine's 85 `node:test` tests (`server/timemachine/test/`): PRNG, time grid, session validation and lookahead, plan refusals, deterministic and seeded golden runs, ORB history, the verdict table, the Kite adapter, speed, and no `Math.random`. The add-on tests cover analog features and weights, the weighted pick, forecast mode, volatility scaling, walk-forward on noise (must reject analog) and on a planted signal (must accept it), and strict-past checks.
 
 ## How the server is built
 
@@ -334,6 +442,7 @@ server/
   backtest/                engine · costs · metrics · run (walk-forward) · account · jobs
   workers/                 pool (jobs + live worker threads) · worker (thread entry) · tasks (what they run)
   ranking/today.js         Top 3 + scoreboard (window backtest cached for the day)
+  timemachine/             Time Machine engine (pure, zero deps): src/ · cli.js · test/ (node:test)
   prediction/              bullish / bearish outlook: models/ · features · evaluate · runDaily · runIntraday
   routes/                  lab.js (/api/lab/*) · predict.js · market.js · validate.js (input checks)
   scripts/                 backfill.js · fetch-all.js · strategyResearch.js
@@ -341,6 +450,7 @@ server/
 client/src/
   pages/TodayPage.jsx      Top 3 · chart · scoreboard
   pages/LabPage.jsx        lab form, results, day picker
+  pages/TimeMachinePage.jsx  Time Machine tab: plan form, odds, history
   components/              Chart · Top3Panel · Scoreboard (+ StrategyDetail dropdown) · OrbReport · VwapReport · decision/parts · ErrorBoundary · …
 ```
 

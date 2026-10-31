@@ -22,7 +22,8 @@ const cache = lru({ max: 300 }); // relation stats per symbol|index|interval|dat
 
 async function relationFor(symbol, id, interval, now) {
   const key = `${symbol}|${id}|${interval}|${now.date}`;
-  if (cache.has(key)) return cache.get(key);
+  const hit = cache.get(key);
+  if (hit) return hit;
   const out = { daily: null, intraday: null, errors: [] };
   try {
     const [s, ix] = await Promise.all([getDailyBars(symbol), getDailyBars(id)]);
