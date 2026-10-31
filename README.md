@@ -14,14 +14,12 @@ Everything is bound to a single 09:15–15:30 IST session: indicators restart at
 <!-- ![Time Machine — outcome distribution](docs/images/timemachine.png) -->
 
 ## Screenshots
+<img width="1917" height="971" alt="image" src="https://github.com/user-attachments/assets/106131af-a42a-490b-98c5-f92aff81d49c" />
 
-> _Add images here._<img width="1917" height="915" alt="image" src="https://github.com/user-attachments/assets/6759d3bc-285a-4d6b-9b25-0b2e350c12d5" />
 
+---------------------------------------------------------------------------------------------------------------------
+<img width="1917" height="915" alt="image" src="https://github.com/user-attachments/assets/6759d3bc-285a-4d6b-9b25-0b2e350c12d5" />
 
-|  |  |
-|--|--|
-| <!-- ![Today page](docs/images/today.png) --> | <!-- ![Decision report](docs/images/decision.png) --> |
-| <!-- ![Backtest](docs/images/backtest.png) --> | <!-- ![Chart overlays](docs/images/chart.png) --> |
 
 ## Future scalability opportunities
 
