@@ -15,7 +15,8 @@ Everything is bound to a single 09:15–15:30 IST session: indicators restart at
 
 ## Screenshots
 
-> _Add images here._
+> _Add images here._<img width="1917" height="915" alt="image" src="https://github.com/user-attachments/assets/6759d3bc-285a-4d6b-9b25-0b2e350c12d5" />
+
 
 |  |  |
 |--|--|
