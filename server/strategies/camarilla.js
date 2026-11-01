@@ -6,6 +6,8 @@ export default defineStrategy({
   levels: ["h4", "h3", "l3", "l4"],
   name: "Camarilla Pivots",
   description: "Reversal: price tests L3 and closes back above it with a bullish bar → long, stop below L4 (short: mirror at H3/H4). Breakout: close above H4 → long, stop below H3 (short: close below L4).",
+  // shortcut: context fit to the 2026-07→10 NIFTY50 OOS audit (thin, ~break-even edge); re-audit after more backfill.
+  contexts: ["gap:flat|or:normal|pos:abovePDH"],
   params: { mode: "both", tolerancePct: 0.1, stopBufferPct: 0.05, entryStart: "09:30", entryEnd: "14:30", targetR: 1.5 },
   spec: [
     { key: "mode", label: "Setups", type: "select", options: ["both", "reversal", "breakout"] },

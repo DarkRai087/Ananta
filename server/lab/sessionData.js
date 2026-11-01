@@ -96,6 +96,7 @@ export class BarContext {
       pdh: prev?.high ?? null,
       pdl: prev?.low ?? null,
       pdc: prev?.close ?? null,
+      pdVwap: sd.session.prevVwap ?? null, // previous regular session's VWAP (scalar reference)
       open: first ? first.open : null, // today's 09:15 open (known at the first bar)
       gapPct: prev && first ? ((first.open - prev.close) / prev.close) * 100 : null,
       // Daily bars of earlier regular sessions, oldest first (last = previous day). Never today.
@@ -105,6 +106,7 @@ export class BarContext {
     };
     this.ref.atrDaily = I.dailyAtr(this.ref.daily, 14);
     this.pivots = sd.pivots; // from prior-day H/L/C
+    this.context = sd.session.context ?? null; // gap/OR-width/PDH-PDL, fixed at 09:30 (no lookahead)
     this.intervalMin = sd.intervalMin;
   }
 

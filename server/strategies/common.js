@@ -5,6 +5,8 @@
 // ranking/today.js LEVEL_LABELS), plan(ctx) (strategies/planKit.js) and decision (a decision
 // engine: { evaluate, configFor, build, vix, report }, where report names the client's
 // report view, e.g. "orb"). Everything about a strategy lives in its own file.
+// contexts (optional): a list of context keys (lab/context.js contextKey, e.g.
+// "gap:up|or:wide|pos:inside"); the backtest only enters on days whose context is in the list.
 // onBar runs at the CLOSE of bar ctx.i and returns:
 //   { side: "long" | "short", stop?, target?, reason }   to enter at the NEXT bar's open
 //   { exit: true, reason }                               to exit an open position at the next open
@@ -23,8 +25,9 @@ export const COMMON_DEFAULTS = {
   targetR: 2, // target at N × risk. 0 = no R target (strategy target, exit signal or 15:15)
   // Stop management after entry (all off by default). Checked at each bar's close.
   breakevenR: 0, // move the stop to entry once price has gone N × risk in favour. 0 = off
-  trailType: "none", // none | atr | vwap | swing
+  trailType: "none", // none | atr | vwap | ema | swing
   trailAtrMult: 2, // atr: stop trails the close by N × ATR
+  trailEmaPeriod: 21, // ema: stop trails the session EMA of this period
   trailSwingBars: 3, // swing: stop trails the low (short: high) of the last N bars
 };
 
@@ -39,8 +42,9 @@ export const COMMON_SPEC = [
   { key: "stopPct", label: "Stop %", type: "number", step: 0.05 },
   { key: "targetR", label: "Target (R, 0 = none)", type: "number", step: 0.25 },
   { key: "breakevenR", label: "Breakeven at (R, 0 = off)", type: "number", step: 0.25 },
-  { key: "trailType", label: "Trailing stop", type: "select", options: ["none", "atr", "vwap", "swing"] },
+  { key: "trailType", label: "Trailing stop", type: "select", options: ["none", "atr", "vwap", "ema", "swing"] },
   { key: "trailAtrMult", label: "Trail ATR multiple", type: "number", step: 0.1 },
+  { key: "trailEmaPeriod", label: "Trail EMA period", type: "number", step: 1 },
   { key: "trailSwingBars", label: "Trail swing bars", type: "number", step: 1 },
 ];
 

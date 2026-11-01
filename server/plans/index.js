@@ -14,6 +14,7 @@ import { LAB } from "../config/lab.js";
 import { inr } from "../decision/util.js";
 import { STRATEGIES, resolveParams } from "../strategies/index.js";
 import { loadSessions, settingsWithDefaults } from "../backtest/run.js";
+import { markDuplicateSignals } from "./dedupe.js";
 import { runSession, bracket, targetForProfit } from "../backtest/engine.js";
 import { tradeCosts, sizeForRisk } from "../backtest/costs.js";
 import { accountSettings } from "../backtest/account.js";
@@ -295,6 +296,7 @@ export function buildPlans({ symbol, interval = LAB.defaultInterval, account: ac
     const db = Math.min(...b.setups.map((s) => Math.abs(s.distancePct ?? 1e9)), 1e9);
     return da - db;
   });
+  markDuplicateSignals(strategies); // tag same-side/same-price setups across strategies as one signal
 
   return {
     symbol,

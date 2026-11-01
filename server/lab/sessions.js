@@ -47,17 +47,20 @@ export function buildSessions(candles) {
   const dates = [...byDate.keys()].sort();
   const sessions = [];
   let prevRegular = null;
+  let prevVwap = null; // the previous regular session's VWAP (a scalar reference, like prev.close)
   let daily = []; // earlier regular sessions' daily bars, oldest first
   let profiles = []; // earlier regular sessions' opening profiles, oldest first
   for (const date of dates) {
     const cs = byDate.get(date).sort((a, b) => a.time - b.time);
     const w = sessionWindow(date);
-    const s = { date, special: w.special, label: w.label, candles: cs, prev: null, history: [], profile: [] };
+    const s = { date, special: w.special, label: w.label, candles: cs, prev: null, prevVwap: null, history: [], profile: [] };
     if (!w.special) {
       s.prev = prevRegular;
+      s.prevVwap = prevVwap;
       s.history = daily;
       s.profile = profiles;
       prevRegular = dailyBar(date, cs);
+      prevVwap = sessionVwap(cs);
       daily = [...daily, prevRegular].slice(-LAB.historyDays);
       profiles = [...profiles, sessionProfile(date, cs)].slice(-LAB.profileDays);
     }
@@ -93,6 +96,21 @@ export function sessionProfile(date, cs) {
     rng[k] = c.high - c.low;
   }
   return { date, or, vol, rng };
+}
+
+// A session's VWAP as a single number (volume-weighted typical price; equal-weighted when there is
+// no volume, like vwap()). A scalar reference for the next day, computed from this session's candles.
+export function sessionVwap(cs) {
+  let pv = 0;
+  let vol = 0;
+  let tp = 0;
+  for (const c of cs) {
+    const t = (c.high + c.low + c.close) / 3;
+    pv += t * (c.volume || 0);
+    vol += c.volume || 0;
+    tp += t;
+  }
+  return vol > 0 ? pv / vol : cs.length ? tp / cs.length : null;
 }
 
 // Daily OHLC derived from a session's intraday candles.

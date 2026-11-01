@@ -1,10 +1,11 @@
-// Session-leak guard: patterns and strategies may not use a previous session's candles.
-// The only prior-day information allowed is daily bars: the reference levels (high, low,
-// close) and ctx.ref.daily, the daily OHLCV of up to LAB.historyDays earlier sessions.
+// Session-leak guard: patterns and strategies may not use a previous session's price candles.
+// The only prior-day information allowed is the daily bars (reference levels + ctx.ref.daily, the
+// daily OHLCV of up to LAB.historyDays earlier sessions) and ctx.ref.profile (the per-slot volume /
+// range summary, used for same-time-of-day relative volume — e.g. Volume Breakout v2's RVOL).
 //
-// Method: build two histories whose day 1 candles are completely different but end with the
-// SAME high / low / close. Everything computed for day 2 (indicators, pattern hits, strategy
-// signals, backtest trades) must be identical. If anything read day 1's candles, it would differ.
+// Method: build two histories whose day 1 candles have a completely different PRICE shape but the
+// SAME daily high / low / close AND the same per-slot volume (so the allowed summaries match).
+// Everything computed for day 2 must be identical; anything reading day 1's price candles differs.
 import { describe, it, expect } from "vitest";
 import { STRATEGIES } from "../strategies/index.js";
 import { detectSession } from "../patterns/index.js";
@@ -22,13 +23,14 @@ function sameRefsDifferentCandles(bars) {
   const lo = Math.min(...bars.map((b) => b[2]));
   const close = bars[bars.length - 1][3];
   const mid = (hi + lo) / 2;
+  const vol = (k) => bars[k][4] ?? 1000; // keep each slot's volume so ctx.ref.profile matches
   const out = bars.map((_, k) => {
     const p = mid + Math.sin(k / 3) * (hi - lo) * 0.3;
-    return [p, p + 0.05, p - 0.05, p + 0.01, 99999];
+    return [p, p + 0.05, p - 0.05, p + 0.01, vol(k)];
   });
-  out[5] = [mid, hi, mid - 0.1, mid, 1];
-  out[9] = [mid, mid + 0.1, lo, mid, 1];
-  out[out.length - 1] = [close, close + 0.01, close - 0.01, close, 1];
+  out[5] = [mid, hi, mid - 0.1, mid, vol(5)];
+  out[9] = [mid, mid + 0.1, lo, mid, vol(9)];
+  out[out.length - 1] = [close, close + 0.01, close - 0.01, close, vol(out.length - 1)];
   return out;
 }
 
@@ -75,7 +77,7 @@ describe("session leak", () => {
     const sd = new SessionData(histA[1], 5);
     expect(sd.candles.every((c) => c.time >= histA[1].candles[0].time)).toBe(true);
     const ctx = new BarContext(sd, {});
-    expect(Object.keys(ctx.ref).sort()).toEqual(["atrDaily", "daily", "gapPct", "open", "pdc", "pdh", "pdl", "profile"]);
+    expect(Object.keys(ctx.ref).sort()).toEqual(["atrDaily", "daily", "gapPct", "open", "pdVwap", "pdc", "pdh", "pdl", "profile"]);
     // Earlier days arrive only as daily bars, never as intraday candles or today's bar.
     for (const d of ctx.ref.daily) {
       expect(Object.keys(d).sort()).toEqual(["close", "date", "high", "low", "open", "volume"]);

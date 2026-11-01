@@ -13,7 +13,8 @@
     "test:timemachine": "cd timemachine && node --test",
     "vwap-research": "node scripts/strategyResearch.js --strategy=vwapBands",
     "strategy-research": "node scripts/strategyResearch.js",
-    "orb-research": "node scripts/strategyResearch.js --strategy=orb"
+    "orb-research": "node scripts/strategyResearch.js --strategy=orb",
+    "ema-grid": "node scripts/emaGrid.js"
   },
   "engines": {
     "node": ">=20"

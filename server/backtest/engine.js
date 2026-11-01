@@ -177,6 +177,12 @@ export function runSession({ session, symbol, strategy, params, settings, interv
     if (i < warmup) continue;
     if (nextMin < winStart || nextMin >= winEnd || nextMin >= cutoff) continue;
     if (ctx.tradesToday >= settings.maxTradesPerDay) continue;
+    // Context gate: a strategy with `contexts` trades only on days whose opening context
+    // (gap/OR-width/PDH-PDL, fixed at 09:30) is in its list. Unknown context → skip.
+    if (strategy.contexts && !strategy.contexts.includes(session.context?.key)) {
+      filtered++;
+      continue;
+    }
     if (indexDir && indexDir[i] != null && indexDir[i] !== (sig.side === "long" ? 1 : -1)) {
       filtered++;
       continue;
@@ -242,6 +248,8 @@ export function runSession({ session, symbol, strategy, params, settings, interv
       if (a != null) offer(long ? bar.close - params.trailAtrMult * a : bar.close + params.trailAtrMult * a);
     } else if (params.trailType === "vwap") {
       offer(data.get("vwap")[i]);
+    } else if (params.trailType === "ema") {
+      offer(data.get("ema", params.trailEmaPeriod)[i]);
     } else if (params.trailType === "swing") {
       const from = Math.max(pos.entryIndex, i - params.trailSwingBars + 1);
       let x = long ? Infinity : -Infinity;

@@ -1,0 +1,190 @@
+{
+  "window": {
+    "from": "2026-08-05",
+    "to": "2026-10-30",
+    "sessions": 60,
+    "split": "2026-10-06",
+    "symbols": [
+      "RELIANCE",
+      "TCS",
+      "SBIN",
+      "INFY",
+      "ITC",
+      "LT",
+      "AXISBANK",
+      "KOTAKBANK",
+      "SUNPHARMA",
+      "TITAN"
+    ]
+  },
+  "v1": {
+    "all": {
+      "trades": 515,
+      "winPct": 23.88,
+      "avgR": -0.48,
+      "expRs": -470.67,
+      "pf": 0.36,
+      "maxDd": 242396.46,
+      "holdMin": 58.66,
+      "net": -242396.46
+    },
+    "is": {
+      "trades": 361,
+      "winPct": 24.65,
+      "avgR": -0.47,
+      "expRs": -468.89,
+      "pf": 0.35,
+      "maxDd": 170755.73,
+      "holdMin": 63.37,
+      "net": -169268.8
+    },
+    "oos": {
+      "trades": 154,
+      "winPct": 22.08,
+      "avgR": -0.48,
+      "expRs": -474.85,
+      "pf": 0.38,
+      "maxDd": 73127.65,
+      "holdMin": 47.63,
+      "net": -73127.65
+    }
+  },
+  "v2": {
+    "all": {
+      "trades": 10,
+      "winPct": 10,
+      "avgR": -0.68,
+      "expRs": -676.77,
+      "pf": 0.02,
+      "maxDd": 6767.68,
+      "holdMin": 19.5,
+      "net": -6767.68
+    },
+    "is": {
+      "trades": 8,
+      "winPct": 12.5,
+      "avgR": -0.6,
+      "expRs": -596.52,
+      "pf": 0.03,
+      "maxDd": 4772.2,
+      "holdMin": 23.75,
+      "net": -4772.2
+    },
+    "oos": {
+      "trades": 2,
+      "winPct": 0,
+      "avgR": -1,
+      "expRs": -997.74,
+      "pf": 0,
+      "maxDd": 1995.49,
+      "holdMin": 2.5,
+      "net": -1995.49
+    }
+  },
+  "fade": {
+    "all": {
+      "trades": 153,
+      "winPct": 28.1,
+      "avgR": -0.28,
+      "expRs": -282.15,
+      "pf": 0.32,
+      "maxDd": 43169.27,
+      "holdMin": 24.77,
+      "net": -43169.27
+    },
+    "is": {
+      "trades": 108,
+      "winPct": 25,
+      "avgR": -0.31,
+      "expRs": -310.11,
+      "pf": 0.29,
+      "maxDd": 33491.8,
+      "holdMin": 23.98,
+      "net": -33491.8
+    },
+    "oos": {
+      "trades": 45,
+      "winPct": 35.56,
+      "avgR": -0.22,
+      "expRs": -215.06,
+      "pf": 0.42,
+      "maxDd": 9677.48,
+      "holdMin": 26.67,
+      "net": -9677.48
+    }
+  },
+  "ablationOOS": {
+    "v2 (all filters)": {
+      "oosTrades": 2,
+      "oosExpRs": -997.74,
+      "oosNet": -1995.49,
+      "oosWinPct": 0
+    },
+    "− VWAP side": {
+      "oosTrades": 2,
+      "oosExpRs": -997.74,
+      "oosNet": -1995.49,
+      "oosWinPct": 0
+    },
+    "− RVOL": {
+      "oosTrades": 13,
+      "oosExpRs": -349.9,
+      "oosNet": -4548.68,
+      "oosWinPct": 15.38
+    },
+    "− ADR skip": {
+      "oosTrades": 2,
+      "oosExpRs": -997.74,
+      "oosNet": -1995.49,
+      "oosWinPct": 0
+    },
+    "− NIFTY vs VWAP": {
+      "oosTrades": 3,
+      "oosExpRs": -663.87,
+      "oosNet": -1991.62,
+      "oosWinPct": 33.33
+    },
+    "retest acceptance": {
+      "oosTrades": 2,
+      "oosExpRs": -996.99,
+      "oosNet": -1993.97,
+      "oosWinPct": 0
+    },
+    "measured target": {
+      "oosTrades": 2,
+      "oosExpRs": -997.74,
+      "oosNet": -1995.49,
+      "oosWinPct": 0
+    }
+  },
+  "v2ByOpenType": {
+    "INSIDE": {
+      "trades": 10,
+      "winPct": 10,
+      "expRs": -676.77,
+      "targetPct": 20
+    }
+  },
+  "v2ByBucket": {
+    "09:15–10:30": {
+      "trades": 0,
+      "winPct": null,
+      "expRs": null
+    },
+    "10:30–11:30": {
+      "trades": 10,
+      "winPct": 10,
+      "expRs": -676.77
+    },
+    "11:30–13:30": {
+      "trades": 0,
+      "winPct": null,
+      "expRs": null
+    },
+    "13:30–15:15": {
+      "trades": 0,
+      "winPct": null,
+      "expRs": null
+    }
+  }
+}

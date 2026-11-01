@@ -7,6 +7,8 @@ export default defineStrategy({
   levels: ["vwap", "pdc"],
   name: "Intraday Momentum (late session)",
   description: "If the move from the previous close to the check time (default 09:45) is at least the threshold, and price is still on that side of VWAP in the afternoon, ride it into the 15:15 square-off. Based on research that the first half-hour's return predicts the last half-hour's.",
+  // shortcut: context fit to the 2026-07→10 NIFTY50 OOS audit (best bucket: gap-up/wide/inside, +₹171/trade); re-audit after more backfill.
+  contexts: ["gap:up|or:wide|pos:inside"],
   params: { checkTime: "09:45", minRetPct: 0.5, swingBars: 6, entryStart: "14:15", entryEnd: "14:45", stopType: "atr", atrMult: 2, targetR: 0 },
   spec: [
     { key: "checkTime", label: "Measure move until", type: "time" },

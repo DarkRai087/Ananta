@@ -77,6 +77,7 @@ export function metrics(trades, { withEquity = false } = {}) {
     avgWinRs,
     avgLossRs,
     avgForcedR: mean(forced.map((t) => t.rNet)),
+    avgHoldMin: mean(trades.map((t) => (t.exitTime - t.entryTime) / 60)),
     expectancyRs: mean(trades.map((t) => t.net)),
     expectancyR: mean(trades.map((t) => t.rNet)),
     grossExpectancyR: mean(trades.map((t) => t.rGross)),

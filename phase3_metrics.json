@@ -1,0 +1,206 @@
+{
+  "window": {
+    "from": "2026-08-05",
+    "to": "2026-10-30",
+    "sessions": 60,
+    "split": "2026-10-06",
+    "symbols": [
+      "RELIANCE",
+      "TCS",
+      "SBIN",
+      "INFY",
+      "ITC",
+      "LT",
+      "AXISBANK",
+      "KOTAKBANK",
+      "SUNPHARMA",
+      "TITAN"
+    ]
+  },
+  "v1": {
+    "all": {
+      "trades": 555,
+      "winPct": 29.01,
+      "avgR": -0.37,
+      "expRs": -364.68,
+      "pf": 0.45,
+      "maxDd": 204075.89,
+      "holdMin": 60.48,
+      "net": -202395.66
+    },
+    "is": {
+      "trades": 397,
+      "winPct": 27.96,
+      "avgR": -0.37,
+      "expRs": -366.49,
+      "pf": 0.44,
+      "maxDd": 150790.77,
+      "holdMin": 62.93,
+      "net": -145497.49
+    },
+    "oos": {
+      "trades": 158,
+      "winPct": 31.65,
+      "avgR": -0.36,
+      "expRs": -360.12,
+      "pf": 0.48,
+      "maxDd": 58590.98,
+      "holdMin": 54.3,
+      "net": -56898.17
+    }
+  },
+  "v2": {
+    "all": {
+      "trades": 197,
+      "winPct": 19.29,
+      "avgR": -0.42,
+      "expRs": -423.42,
+      "pf": 0.17,
+      "maxDd": 84055.44,
+      "holdMin": 31.04,
+      "net": -83413.21
+    },
+    "is": {
+      "trades": 136,
+      "winPct": 18.38,
+      "avgR": -0.44,
+      "expRs": -439.83,
+      "pf": 0.18,
+      "maxDd": 60190.91,
+      "holdMin": 29.19,
+      "net": -59816.6
+    },
+    "oos": {
+      "trades": 61,
+      "winPct": 21.31,
+      "avgR": -0.39,
+      "expRs": -386.83,
+      "pf": 0.15,
+      "maxDd": 23864.53,
+      "holdMin": 35.16,
+      "net": -23596.61
+    }
+  },
+  "ablationOOS": {
+    "v2 (all filters)": {
+      "oosTrades": 61,
+      "oosExpRs": -386.83,
+      "oosNet": -23596.61,
+      "oosWinPct": 21.31
+    },
+    "− contraction": {
+      "oosTrades": 94,
+      "oosExpRs": -401.1,
+      "oosNet": -37703.7,
+      "oosWinPct": 22.34
+    },
+    "− candle quality": {
+      "oosTrades": 130,
+      "oosExpRs": -374.88,
+      "oosNet": -48733.96,
+      "oosWinPct": 21.54
+    },
+    "− NIFTY vs VWAP": {
+      "oosTrades": 97,
+      "oosExpRs": -423.83,
+      "oosNet": -41111.28,
+      "oosWinPct": 20.62
+    },
+    "− relative strength": {
+      "oosTrades": 93,
+      "oosExpRs": -481.06,
+      "oosNet": -44738.66,
+      "oosWinPct": 17.2
+    },
+    "− RVOL (mult 1.0)": {
+      "oosTrades": 130,
+      "oosExpRs": -348.64,
+      "oosNet": -45322.61,
+      "oosWinPct": 21.54
+    },
+    "retest entry": {
+      "oosTrades": 3,
+      "oosExpRs": -894.21,
+      "oosNet": -2682.63,
+      "oosWinPct": 0
+    }
+  },
+  "levelStats": {
+    "OR": {
+      "trades": 115,
+      "winPct": 22.61,
+      "targetPct": 12.17,
+      "expRs": -398.77
+    },
+    "CONSOL": {
+      "trades": 37,
+      "winPct": 16.22,
+      "targetPct": 0,
+      "expRs": -376.26
+    },
+    "VWAP": {
+      "trades": 28,
+      "winPct": 21.43,
+      "targetPct": 21.43,
+      "expRs": -492.25
+    },
+    "PDH_PDL": {
+      "trades": 17,
+      "winPct": 0,
+      "targetPct": 0,
+      "expRs": -579.42
+    }
+  },
+  "byStock": {
+    "RELIANCE": {
+      "trades": 21,
+      "winPct": 19.05,
+      "expRs": -268.61
+    },
+    "TCS": {
+      "trades": 14,
+      "winPct": 7.14,
+      "expRs": -700.2
+    },
+    "SBIN": {
+      "trades": 13,
+      "winPct": 7.69,
+      "expRs": -568.14
+    },
+    "INFY": {
+      "trades": 18,
+      "winPct": 11.11,
+      "expRs": -492.81
+    },
+    "ITC": {
+      "trades": 22,
+      "winPct": 40.91,
+      "expRs": -103.77
+    },
+    "LT": {
+      "trades": 14,
+      "winPct": 21.43,
+      "expRs": -516.1
+    },
+    "AXISBANK": {
+      "trades": 17,
+      "winPct": 11.76,
+      "expRs": -506.17
+    },
+    "KOTAKBANK": {
+      "trades": 28,
+      "winPct": 14.29,
+      "expRs": -579.98
+    },
+    "SUNPHARMA": {
+      "trades": 24,
+      "winPct": 20.83,
+      "expRs": -470.73
+    },
+    "TITAN": {
+      "trades": 26,
+      "winPct": 26.92,
+      "expRs": -233.2
+    }
+  }
+}

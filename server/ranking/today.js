@@ -8,7 +8,7 @@
 //     only positive expectancy makes the Top 3. None → "No edge today — sit out".
 //  Before today's context exists (pre-market / OR not done) it ranks on all OOS trades.
 import { LAB } from "../config/lab.js";
-import { STRATEGIES } from "../strategies/index.js";
+import { RANKED_STRATEGIES as STRATEGIES } from "../strategies/index.js";
 import { loadSessions, runStrategies, settingsWithDefaults } from "../backtest/run.js";
 import { metrics } from "../backtest/metrics.js";
 import { SessionData } from "../lab/sessionData.js";

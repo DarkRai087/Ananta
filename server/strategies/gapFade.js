@@ -6,6 +6,8 @@ export default defineStrategy({
   levels: ["orHigh", "orLow", "pdc"],
   name: "Gap Fill / Fade",
   description: "Gap up that fails: close below the opening range low → short, targeting the previous close (gap down: mirror). With Target = 0 the target is the gap fill.",
+  // shortcut: context fit to the 2026-07→10 NIFTY50 OOS audit (thin, near-zero edge); re-audit after more backfill.
+  contexts: ["gap:up|or:wide|pos:abovePDH"],
   params: { gapPct: 0.5, maxGapPct: 2.5, orMinutes: 15, entryStart: "09:30", entryEnd: "12:00", targetR: 0 },
   spec: [
     { key: "gapPct", label: "Min gap %", type: "number", step: 0.1 },

@@ -6,6 +6,8 @@ export default defineStrategy({
   levels: ["orHigh", "orLow", "pdc"],
   name: "Gap and Go",
   description: "Gap up ≥ threshold, then a close above the opening range high → long (gap down: mirror). Stop at the other side of the range.",
+  // shortcut: contexts fit to the 2026-07→10 NIFTY50 OOS audit (only gap-up/inside paid); re-audit after more backfill.
+  contexts: ["gap:up|or:normal|pos:inside", "gap:up|or:wide|pos:inside"],
   params: { gapPct: 0.5, maxGapPct: 4, orMinutes: 15, entryStart: "09:30", entryEnd: "11:00" },
   spec: [
     { key: "gapPct", label: "Min gap %", type: "number", step: 0.1 },

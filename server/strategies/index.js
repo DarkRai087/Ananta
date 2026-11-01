@@ -2,7 +2,10 @@ import orb from "./orb.js";
 import vwapPullback from "./vwapPullback.js";
 import emaCross from "./emaCross.js";
 import volumeBreakout from "./volumeBreakout.js";
+import volumeBreakoutV2 from "./volumeBreakoutV2.js";
 import pdhPdl from "./pdhPdlBreakout.js";
+import pdhPdlV2 from "./pdhPdlV2.js";
+import pdhPdlFade from "./pdhPdlFade.js";
 import cprReversal from "./cprReversal.js";
 import gapAndGo from "./gapAndGo.js";
 import gapFade from "./gapFade.js";
@@ -19,9 +22,23 @@ import nr7Orb from "./nr7Orb.js";
 import atrExhaustion from "./atrExhaustion.js";
 
 export const STRATEGIES = [
-  orb, vwapPullback, emaCross, volumeBreakout, pdhPdl, cprReversal, gapAndGo, gapFade, supertrend, meanReversion,
+  orb, vwapPullback, emaCross, volumeBreakout, volumeBreakoutV2, pdhPdl, pdhPdlV2, pdhPdlFade, cprReversal, gapAndGo, gapFade, supertrend, meanReversion,
   orbFakeout, openHighLow, camarilla, narrowCpr, vwapBands, bbSqueeze, afternoonMomentum, nr7Orb, atrExhaustion,
 ];
+
+// Benched 2026-11-01 after the OOS context audit (scripts/strategyAudit.js, NIFTY50 5m, OOS
+// 2026-07→10): net-negative after costs in every adequate-sample context. Still registered, so
+// the Lab and the research scripts can study them; only the Top 3 / scoreboard ranker skips
+// them (RANKED_STRATEGIES). Re-audit after more backfill before clearing an id from here.
+const BENCHED = new Set([
+  "emaCross", "volumeBreakout", "volumeBreakoutV2", "pdhPdl", "pdhPdlV2", "pdhPdlFade", "cprReversal", "meanReversion",
+  "orbFakeout", "openHighLow", "bbSqueeze", "nr7Orb", "atrExhaustion", "vwapPullback",
+]);
+
+// What the Top 3 and the scoreboard rank: the gated survivors, plus orb/vwapBands (whose
+// decision engines scored 0 backtest trades at minScore 85, so the audit can't judge them —
+// kept for live, not benched).
+export const RANKED_STRATEGIES = STRATEGIES.filter((s) => !BENCHED.has(s.id));
 
 export const STRATEGY_BY_ID = Object.fromEntries(STRATEGIES.map((s) => [s.id, s]));
 

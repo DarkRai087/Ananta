@@ -6,6 +6,8 @@ export default defineStrategy({
   levels: ["tc", "bc", "orHigh", "orLow", "vwap"],
   name: "Narrow CPR Trend Day",
   description: "Only on days with a narrow CPR, which often come before a trending day. After the opening range, a close above both the CPR top and the OR high, with price above VWAP → long (short: mirror). Stop at the tighter of the CPR bottom and the OR low.",
+  // shortcut: context fit to the 2026-07→10 NIFTY50 OOS audit (only gap-up/wide/>PDH paid); re-audit after more backfill.
+  contexts: ["gap:up|or:wide|pos:abovePDH"],
   params: { maxWidthPct: 0.25, orMinutes: 15, entryStart: "09:30", entryEnd: "13:00" },
   spec: [
     { key: "maxWidthPct", label: "Max CPR width %", type: "number", step: 0.01 },

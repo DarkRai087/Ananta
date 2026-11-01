@@ -74,6 +74,14 @@ function BasicDetail({ meta, m, plan }) {
                 </td>
               </tr>
               <tr>
+                <td className="muted">Edge (net)</td>
+                <td>
+                  expectancy {fmtR(m.expectancyR)} ({fmtRs(m.expectancyRs)}) · profit factor{" "}
+                  {m.profitFactor == null ? "—" : Number.isFinite(m.profitFactor) ? m.profitFactor.toFixed(2) : "∞"}
+                  {m.avgHoldMin != null ? ` · avg hold ${Math.round(m.avgHoldMin)}m` : ""}
+                </td>
+              </tr>
+              <tr>
                 <td className="muted">Average win / loss</td>
                 <td>
                   {fmtR(m.avgWinR)} ({fmtRs(m.avgWinRs)}) / {fmtR(m.avgLossR)} ({fmtRs(m.avgLossRs)})

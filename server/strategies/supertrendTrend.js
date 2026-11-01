@@ -6,6 +6,8 @@ export default defineStrategy({
   levels: ["supertrend"],
   name: "Supertrend Trend",
   description: "Enter when Supertrend (10,3, restarted each session) flips; stop at the Supertrend line; exit on the next flip or at 15:15.",
+  // shortcut: context fit to the 2026-07→10 NIFTY50 OOS audit (only gap-up/wide/inside paid); re-audit after more backfill.
+  contexts: ["gap:up|or:wide|pos:inside"],
   params: { period: 10, mult: 3, exitOnFlip: true, entryEnd: "14:30", targetR: 0 },
   spec: [
     { key: "period", label: "ATR period", type: "number", step: 1 },
