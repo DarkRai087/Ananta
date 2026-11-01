@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-11-01T19:54:50.540Z",
+  "window": {
+    "interval": "5m",
+    "from": "2026-08-05",
+    "to": "2026-10-30",
+    "conflictWithinBars": 6,
+    "symbols": [
+      "RELIANCE",
+      "TCS",
+      "SBIN",
+      "INFY",
+      "ITC",
+      "LT",
+      "AXISBANK",
+      "KOTAKBANK",
+      "SUNPHARMA",
+      "TITAN"
+    ]
+  },
+  "regimeDays": {
+    "WIDE": 296,
+    "NORMAL": 133,
+    "NARROW": 171
+  },
+  "totals": {
+    "allTrades": 2079,
+    "conflictPairs": 356,
+    "suppressedTrades": 155,
+    "suppressedByStrategy": {
+      "cprReversal": 85,
+      "pdhPdl": 31,
+      "volumeBreakout": 39
+    }
+  },
+  "suppressedResult": {
+    "trades": 155,
+    "winPct": 30.97,
+    "expectancyRs": -344.15,
+    "netPnl": -53343.84
+  },
+  "keptVsAll": {
+    "all": {
+      "trades": 2079,
+      "expectancyRs": -390.93,
+      "netPnl": -812745.75
+    },
+    "keptAfterArbiter": {
+      "trades": 1924,
+      "expectancyRs": -394.7,
+      "netPnl": -759401.92
+    }
+  }
+}

@@ -8,3 +8,8 @@ server/.env
 *.log
 .claude/skills/**/*.md
 CLAUDE.md
+
+# Private research notes (audits, change reports, plans) — not for the public repo. README stays tracked.
+AUDIT_*.md
+CHANGES_*.md
+PLAN_*.md

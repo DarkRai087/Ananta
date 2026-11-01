@@ -1,0 +1,160 @@
+{
+  "strategy": "supertrend (v1)",
+  "generatedAt": "2026-11-01T20:54:33.864Z",
+  "interval": "5m",
+  "sessions": 120,
+  "from": "2026-05-11",
+  "to": "2026-10-30",
+  "symbol": "RELIANCE",
+  "symbolAtrPct": 2.6,
+  "controlGroup": [
+    "BHARTIARTL",
+    "LT",
+    "AXISBANK",
+    "KOTAKBANK",
+    "MARUTI",
+    "HINDUNILVR"
+  ],
+  "controlAtrPct": {
+    "BHARTIARTL": 2.67,
+    "LT": 2.44,
+    "AXISBANK": 2.31,
+    "KOTAKBANK": 2.25,
+    "MARUTI": 2.24,
+    "HINDUNILVR": 2.97
+  },
+  "note": "SYMBOL placeholder <NSE_SYMBOL> defaulted to RELIANCE. v1 has `contexts` gating (gap:up|or:wide|pos:inside) + session-reset Supertrend, so trade count is low.",
+  "settings": "LAB.backtest defaults (risk Rs1000/trade, slippage 0.05%, costs config/costs.js)",
+  "calcVerification": {
+    "method": "Independent re-implementation of Wilder-ATR Supertrend (separate code path); bar-by-bar compare of the line value and direction on 3 recent sessions. No third-party offline reference available; this verifies the documented formula is implemented consistently.",
+    "tolerancePct": 0.1,
+    "results": [
+      {
+        "date": "2026-10-28",
+        "bars": 73,
+        "compared": 64,
+        "maxDevPct": 0,
+        "dirMismatch": 0,
+        "lastLine": 1165.63
+      },
+      {
+        "date": "2026-10-29",
+        "bars": 73,
+        "compared": 64,
+        "maxDevPct": 0,
+        "dirMismatch": 0,
+        "lastLine": 1176.53
+      },
+      {
+        "date": "2026-10-30",
+        "bars": 74,
+        "compared": 65,
+        "maxDevPct": 0,
+        "dirMismatch": 0,
+        "lastLine": 1160.79
+      }
+    ],
+    "pass": true
+  },
+  "symbolMetrics": {
+    "trades": 2,
+    "winPct": 50,
+    "avgR": 0.71,
+    "expectancyRs": 705.14,
+    "profitFactor": 11.85,
+    "maxDrawdownRs": 130.02,
+    "avgHoldMin": 160,
+    "tradesPerDay": 0.02,
+    "netPnl": 1410.29
+  },
+  "controlMetrics": {
+    "trades": 15,
+    "winPct": 46.67,
+    "avgR": 0.16,
+    "expectancyRs": 143.12,
+    "profitFactor": 1.48,
+    "maxDrawdownRs": 1543.44,
+    "avgHoldMin": 145,
+    "tradesPerDay": 0.13,
+    "netPnl": 2146.87
+  },
+  "perStock": {
+    "RELIANCE": {
+      "trades": 2,
+      "winPct": 50,
+      "avgR": 0.71,
+      "expectancyRs": 705.14,
+      "profitFactor": 11.85,
+      "maxDrawdownRs": 130.02,
+      "avgHoldMin": 160,
+      "tradesPerDay": 0.02,
+      "netPnl": 1410.29
+    },
+    "BHARTIARTL": {
+      "trades": 4,
+      "winPct": 50,
+      "avgR": -0.05,
+      "expectancyRs": -50.38,
+      "profitFactor": 0.74,
+      "maxDrawdownRs": 413.2,
+      "avgHoldMin": 155,
+      "tradesPerDay": 0.03,
+      "netPnl": -201.53
+    },
+    "LT": {
+      "trades": 4,
+      "winPct": 0,
+      "avgR": -0.79,
+      "expectancyRs": -775.42,
+      "profitFactor": 0,
+      "maxDrawdownRs": 3101.68,
+      "avgHoldMin": 82.5,
+      "tradesPerDay": 0.03,
+      "netPnl": -3101.68
+    },
+    "AXISBANK": {
+      "trades": 2,
+      "winPct": 50,
+      "avgR": 0.28,
+      "expectancyRs": 276.42,
+      "profitFactor": 2.8,
+      "maxDrawdownRs": 307.42,
+      "avgHoldMin": 122.5,
+      "tradesPerDay": 0.02,
+      "netPnl": 552.84
+    },
+    "KOTAKBANK": {
+      "trades": 1,
+      "winPct": 100,
+      "avgR": 0.79,
+      "expectancyRs": 786.54,
+      "profitFactor": "Infinity",
+      "maxDrawdownRs": 0,
+      "avgHoldMin": 225,
+      "tradesPerDay": 0.01,
+      "netPnl": 786.54
+    },
+    "MARUTI": {
+      "trades": 4,
+      "winPct": 75,
+      "avgR": 1.12,
+      "expectancyRs": 1027.67,
+      "profitFactor": 16.01,
+      "maxDrawdownRs": 273.9,
+      "avgHoldMin": 188.75,
+      "tradesPerDay": 0.03,
+      "netPnl": 4110.69
+    },
+    "HINDUNILVR": {
+      "trades": 0,
+      "winPct": null,
+      "avgR": null,
+      "expectancyRs": null,
+      "profitFactor": null,
+      "maxDrawdownRs": 0,
+      "avgHoldMin": null,
+      "tradesPerDay": 0,
+      "netPnl": 0
+    }
+  }
+}

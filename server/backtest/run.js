@@ -60,6 +60,7 @@ export function runStrategies(symbolSessions, strategies, { interval, settings, 
       done++;
       if (s.special && !st.includeSpecialSessions) continue;
       dates.add(s.date);
+      s.symbol = symbol; // let strategies read ctx.symbol for per-symbol config (ex-dates, eligibility)
       const sd = new SessionData(s, intervalMin, `${symbol}|${interval}|${s.date}`);
       for (const r0 of resolved) {
         const r = runSession({ session: s, symbol, strategy: r0.def, params: r0.params, settings: r0.st, intervalMin, sd });

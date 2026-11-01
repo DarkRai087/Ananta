@@ -15,6 +15,8 @@ import { inr } from "../decision/util.js";
 import { STRATEGIES, resolveParams } from "../strategies/index.js";
 import { loadSessions, settingsWithDefaults } from "../backtest/run.js";
 import { markDuplicateSignals } from "./dedupe.js";
+import { markRegimeConflicts, cprRegime, gapLabel, markGapRouting, markTrendFamily } from "./arbiter.js";
+import { dailyAtr } from "../lab/indicators.js";
 import { runSession, bracket, targetForProfit } from "../backtest/engine.js";
 import { tradeCosts, sizeForRisk } from "../backtest/costs.js";
 import { accountSettings } from "../backtest/account.js";
@@ -283,6 +285,7 @@ export function buildPlans({ symbol, interval = LAB.defaultInterval, account: ac
     }
   }
 
+  session.symbol = symbol; // let strategies read ctx.symbol for per-symbol config
   if (indexId) attachIndex([session], indexSessions, { indexId });
   attachMarketFor(symbol, interval, [session], { from: istDate(sessionsBack(5, now.t)) }); // NIFTY 50 + sector for ctx.market
   const indexNow = indexId ? indexState(indexSessions[indexSessions.length - 1], indexId) : null;
@@ -297,6 +300,13 @@ export function buildPlans({ symbol, interval = LAB.defaultInterval, account: ac
     return da - db;
   });
   markDuplicateSignals(strategies); // tag same-side/same-price setups across strategies as one signal
+  // Regime arbiter: label the day by CPR width and stand down opposite signals the regime disfavours,
+  // then route a GAP day to Gap and Go (suppress duplicate PDH/PDL gap routes and CPR fades against it).
+  const regime = cprRegime(sd.pivots?.cprWidthPct, session.history || []);
+  const { conflicts } = markRegimeConflicts(strategies, regime.tag);
+  const gap = gapLabel(session.candles[0]?.open ?? null, session.prev?.close ?? null, dailyAtr(session.history || [], 14));
+  conflicts.push(...markGapRouting(strategies, gap));
+  markTrendFamily(strategies); // Supertrend + 9/21 EMA same-direction → one combined TREND signal
 
   return {
     symbol,
@@ -311,6 +321,7 @@ export function buildPlans({ symbol, interval = LAB.defaultInterval, account: ac
     account,
     index: { id: indexId, name: indexId ? indexName(indexId) : null, choice: indexChoice, member: indicesOf(symbol).map((id) => ({ id, name: indexName(id) })), now: indexNow },
     settings: { riskPerTrade: st.riskPerTrade, maxPositionValue: st.maxPositionValue, maxDailyLoss: st.maxDailyLoss, profitTarget: st.profitTarget, maxTradesPerDay: st.maxTradesPerDay, squareOff: st.squareOff, entryCutoff: st.entryCutoff, slippagePct: st.slippagePct },
+    regime: { tag: regime.tag, pct: regime.pct, gap, conflicts },
     strategies,
   };
 }

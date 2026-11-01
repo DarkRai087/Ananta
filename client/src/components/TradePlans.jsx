@@ -252,6 +252,23 @@ export default function TradePlans({ plans, loading, error, stats, statsLabel, n
           )}
         </div>
       )}
+      {plans?.regime && (plans.regime.tag !== "NORMAL" || plans.regime.gap?.gap) && (
+        <div className="small index-line">
+          {plans.regime.gap?.gap && (
+            <>
+              <b>GAP day</b> ({plans.regime.gap.side === "long" ? "up" : "down"}, {plans.regime.gap.gapAtr?.toFixed(1)}×ATR) — routed to Gap and Go.{" "}
+            </>
+          )}
+          {plans.regime.tag !== "NORMAL" && (
+            <>
+              CPR-width regime: <b>{plans.regime.tag}</b>
+              {plans.regime.pct != null ? ` (${Math.round(plans.regime.pct * 100)}th pct)` : ""} —{" "}
+              {plans.regime.tag === "WIDE" ? "range-likely, favours mean-reversion (CPR Reversal)" : "trend-likely, favours continuation (PDH/PDL, Volume Breakout)"}.
+            </>
+          )}
+          {plans.regime.conflicts?.length ? ` ${plans.regime.conflicts.length} signal${plans.regime.conflicts.length > 1 ? "s" : ""} stood down.` : ""}
+        </div>
+      )}
       {noEdge && (
         <div className="banner sitout small">
           <strong>Backtest warning:</strong> no strategy made money after charges on recent data. These are the levels where each strategy <i>would</i> trade — not a recommendation to trade them.
@@ -309,7 +326,10 @@ export default function TradePlans({ plans, loading, error, stats, statsLabel, n
                       <td>
                         <Backtest m={stats?.[p.id]} />
                       </td>
-                      <td className="why-cell">{p.note}</td>
+                      <td className="why-cell">
+                        {p.note}
+                        {p.suppressed && <div className="small warning">⤼ Stood down by {p.suppressed.by} ({p.suppressed.regime} CPR regime)</div>}
+                      </td>
                     </tr>
                     {expanded === p.id && (
                       <tr className="sub">

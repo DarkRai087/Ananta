@@ -108,6 +108,8 @@ export class BarContext {
     this.pivots = sd.pivots; // from prior-day H/L/C
     this.context = sd.session.context ?? null; // gap/OR-width/PDH-PDL, fixed at 09:30 (no lookahead)
     this.intervalMin = sd.intervalMin;
+    this.symbol = sd.session.symbol ?? null; // set by the runners; for per-symbol config lookups
+    this.date = sd.session.date ?? null;
   }
 
   _check(k) {

@@ -7,9 +7,13 @@ import pdhPdl from "./pdhPdlBreakout.js";
 import pdhPdlV2 from "./pdhPdlV2.js";
 import pdhPdlFade from "./pdhPdlFade.js";
 import cprReversal from "./cprReversal.js";
+import cprReversalV2 from "./cprReversalV2.js";
 import gapAndGo from "./gapAndGo.js";
+import gapAndGoV2 from "./gapAndGoV2.js";
 import gapFade from "./gapFade.js";
+import gapFadeV2 from "./gapFadeV2.js";
 import supertrend from "./supertrendTrend.js";
+import supertrendV2 from "./supertrendV2.js";
 import meanReversion from "./meanReversion.js";
 import orbFakeout from "./orbFakeout.js";
 import openHighLow from "./openHighLow.js";
@@ -22,7 +26,7 @@ import nr7Orb from "./nr7Orb.js";
 import atrExhaustion from "./atrExhaustion.js";
 
 export const STRATEGIES = [
-  orb, vwapPullback, emaCross, volumeBreakout, volumeBreakoutV2, pdhPdl, pdhPdlV2, pdhPdlFade, cprReversal, gapAndGo, gapFade, supertrend, meanReversion,
+  orb, vwapPullback, emaCross, volumeBreakout, volumeBreakoutV2, pdhPdl, pdhPdlV2, pdhPdlFade, cprReversal, cprReversalV2, gapAndGo, gapAndGoV2, gapFade, gapFadeV2, supertrend, supertrendV2, meanReversion,
   orbFakeout, openHighLow, camarilla, narrowCpr, vwapBands, bbSqueeze, afternoonMomentum, nr7Orb, atrExhaustion,
 ];
 
@@ -31,8 +35,8 @@ export const STRATEGIES = [
 // the Lab and the research scripts can study them; only the Top 3 / scoreboard ranker skips
 // them (RANKED_STRATEGIES). Re-audit after more backfill before clearing an id from here.
 const BENCHED = new Set([
-  "emaCross", "volumeBreakout", "volumeBreakoutV2", "pdhPdl", "pdhPdlV2", "pdhPdlFade", "cprReversal", "meanReversion",
-  "orbFakeout", "openHighLow", "bbSqueeze", "nr7Orb", "atrExhaustion", "vwapPullback",
+  "emaCross", "volumeBreakout", "volumeBreakoutV2", "pdhPdl", "pdhPdlV2", "pdhPdlFade", "cprReversal", "cprReversalV2", "meanReversion",
+  "orbFakeout", "openHighLow", "bbSqueeze", "nr7Orb", "atrExhaustion", "vwapPullback", "gapAndGoV2", "gapFadeV2", "supertrendV2",
 ]);
 
 // What the Top 3 and the scoreboard rank: the gated survivors, plus orb/vwapBands (whose
