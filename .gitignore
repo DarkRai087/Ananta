@@ -13,3 +13,7 @@ CLAUDE.md
 AUDIT_*.md
 CHANGES_*.md
 PLAN_*.md
+
+# Private research outputs: root-level JSON metrics (baseline_*, phase3_*). Anchored to root, so
+# client/ and server/ JSON (package.json, config, etc.) stay tracked.
+/*.json
