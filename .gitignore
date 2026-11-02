@@ -17,3 +17,6 @@ PLAN_*.md
 # Private research outputs: root-level JSON metrics (baseline_*, phase3_*). Anchored to root, so
 # client/ and server/ JSON (package.json, config, etc.) stay tracked.
 /*.json
+
+# Pattern Scanner output (written at runtime so the Time Machine / strategy panel can read it).
+server/scanner/output/

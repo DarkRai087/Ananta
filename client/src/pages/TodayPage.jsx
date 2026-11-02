@@ -5,10 +5,11 @@ import OverlayBar from "../components/OverlayBar.jsx";
 import Top3Panel from "../components/Top3Panel.jsx";
 import Scoreboard from "../components/Scoreboard.jsx";
 import OutlookPanel from "../components/OutlookPanel.jsx";
+import PatternScanner from "../components/PatternScanner.jsx";
 import AccountBar, { DEFAULT_ACCOUNT } from "../components/AccountBar.jsx";
 import MarketLink from "../components/MarketLink.jsx";
 import TradePlans, { planLevels } from "../components/TradePlans.jsx";
-import { fetchCandles, fetchPlans, fetchPrediction, fetchIndexLink } from "../api.js";
+import { fetchCandles, fetchPlans, fetchPrediction, fetchIndexLink, fetchScan } from "../api.js";
 import { useToday, useLiveData } from "../hooks.js";
 import { fmtPrice, fmtTime, isMarketOpen, store } from "../format.js";
 import ErrorBoundary from "../components/ErrorBoundary.jsx";
@@ -66,6 +67,8 @@ export default function TodayPage({ meta, symbol, setSymbol }) {
   const plans = useLiveData((signal) => fetchPlans(symbol, topInterval, account, signal), `${symbol}|${topInterval}|${accountKey}`, { everyMs: LIVE_POLL_MS });
   const pred = useLiveData((signal) => fetchPrediction(symbol, topInterval, signal), `${symbol}|${topInterval}`, { everyMs: 60_000 });
   const link = useLiveData((signal) => fetchIndexLink(symbol, topInterval, signal), `${symbol}|${topInterval}`, { everyMs: 30_000 });
+  // Pattern Scanner for the chart symbol (scans 5m + 15m on their latest completed candle).
+  const scan = useLiveData((signal) => fetchScan(symbol, undefined, undefined, signal), `scan|${symbol}`, { everyMs: 60_000 });
   // Levels from an open scoreboard dropdown ("Show on chart" in a decision report).
   const [detailLevels, setDetailLevels] = useState(null);
   const onDetailLevels = useCallback((lv) => {
@@ -219,6 +222,10 @@ export default function TodayPage({ meta, symbol, setSymbol }) {
 
       <ErrorBoundary name="The outlook" resetKey={symbol}>
         <OutlookPanel pred={pred.data} loading={pred.loading} error={pred.error} symbol={symbol} />
+      </ErrorBoundary>
+
+      <ErrorBoundary name="The pattern scanner" resetKey={symbol}>
+        <PatternScanner scan={scan.data} loading={scan.loading} error={scan.error} symbol={symbol} />
       </ErrorBoundary>
 
       <ErrorBoundary name="Today's Top 3" resetKey={target}>

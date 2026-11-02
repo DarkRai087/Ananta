@@ -20,6 +20,7 @@ import { buildPlans } from "../plans/index.js";
 import { decisionReport, syncForReport } from "../decision/live.js";
 import { predict } from "../prediction/index.js";
 import { indexLink } from "../market/index.js";
+import { runScan } from "../scanner/index.js";
 
 export const TASKS = {
   // ── Jobs (backtest/jobs.js) ──
@@ -128,4 +129,17 @@ export const TASKS = {
 
   predict: ({ symbol, interval }) => predict(symbol, { interval }),
   indexLink: ({ symbol, interval }) => indexLink(symbol, { interval }),
+
+  // Pattern Scanner: detect the patterns on the latest completed candle of each timeframe and
+  // attach this stock's own history. Tops up the symbol's candles for every timeframe first.
+  async scan({ symbol, timeframes, lookback }) {
+    const warnings = new Set();
+    for (const tf of timeframes) {
+      await syncIntraday(symbol, tf, { fromSec: sessionsBack(lookback + 10) }).then(
+        (r) => r.warning && warnings.add(r.warning),
+        (err) => warnings.add(err.message)
+      );
+    }
+    return { ...runScan({ symbol, timeframes, lookback }), warning: [...warnings].join("; ") || null };
+  },
 };

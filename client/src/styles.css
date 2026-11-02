@@ -873,6 +873,47 @@ details summary {
   font-size: 12px;
 }
 
+/* Pattern Scanner ─────────────────────────────────── */
+.scanner {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.scanner-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.banner.scan-best {
+  margin: 8px 0;
+  background: var(--pos-bg);
+  border-color: rgba(38, 166, 154, 0.4);
+}
+.scan-table {
+  margin-top: 8px;
+}
+.scan-table td {
+  vertical-align: middle;
+}
+.scan-table .up {
+  color: var(--up);
+}
+.scan-table .down {
+  color: var(--down);
+}
+.scan-lines {
+  margin: 8px 0 6px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.scan-lines li.muted {
+  color: var(--muted);
+}
+
 /* Trade plans ───────────────────────────────────── */
 .plans {
   padding: 10px 12px 8px;

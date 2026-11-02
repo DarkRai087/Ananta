@@ -9,6 +9,8 @@ import { MARKET } from "../config/market.js";
 import { MARKET_INDEX } from "../config/indices.js";
 import { AppError } from "../errors.js";
 import { patternList } from "../patterns/index.js";
+import { scannerMeta } from "../scanner/index.js";
+import { SCANNER } from "../config/scanner.js";
 import { strategyList, STRATEGY_BY_ID, DECISION_STRATEGIES } from "../strategies/index.js";
 import { OVERLAYS } from "../lab/overlays.js";
 import { listUniverses, resolveTarget, isUniverse, getWatchlist, setWatchlist } from "../data/universes.js";
@@ -43,6 +45,7 @@ router.get("/meta", (_req, res) => {
     ranking: LAB.ranking,
     context: LAB.context,
     patternStats: LAB.patternStats,
+    scanner: scannerMeta(),
     costs: COSTS,
     timeBuckets: MARKET.timeBuckets,
     // The client's market clock (IST minutes) and holiday list, so it never hard-codes them.
@@ -90,6 +93,15 @@ router.get("/session", async (req, res) => {
 // positions, fresh signals). Tops up the candle cache first; cheap enough to poll.
 router.get("/plans", async (req, res) => {
   res.json(await livePool.run("plans", { symbol: symbolOf(req.query.symbol), interval: intervalOf(req.query.interval), account: accountOf(req.query) }));
+});
+
+// Pattern Scanner: the patterns formed on the latest completed candle of each timeframe, with
+// this stock's own history and a ranked best. Detect-and-report only; never places an order.
+router.get("/scan", async (req, res) => {
+  const q = req.query;
+  const tfs = (listOf(q.timeframes).length ? listOf(q.timeframes) : SCANNER.timeframes).map((t) => intervalOf(t));
+  const lookback = Math.min(250, Math.max(20, Number(q.lookback) || SCANNER.lookbackSessions));
+  res.json(await livePool.run("scan", { symbol: symbolOf(q.symbol), timeframes: [...new Set(tfs)], lookback }));
 });
 
 // Full decision report for a strategy with a decision engine (orb, vwapBands) on one symbol:
