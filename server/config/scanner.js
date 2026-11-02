@@ -13,7 +13,7 @@ export const SCANNER = {
   // ── What to scan ──────────────────────────────────────────────────────────
   timeframes: ["5m", "15m"], // scanned on the most recent COMPLETED candle of each
   defaultTimeframe: "5m",
-  lookbackSessions: 90, // historical window for the "momentum %" stats
+  lookbackSessions: 200, // historical window for the "momentum %" stats
   minRangePct: 0.03, // ignore bars whose high−low is under this % of price (flat / illiquid print)
 
   // ── Prior-trend model ─────────────────────────────────────────────────────
